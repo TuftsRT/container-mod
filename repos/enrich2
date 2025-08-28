@@ -1,0 +1,4 @@
+Description: Enrich2 is a general software tool for processing, analyzing, and visualizing data from deep mutational scanning experiments. 
+Home Page: https://github.com/FowlerLab/Enrich2/
+Programs: enrich_cmd,enrich_gui
+version("2.0.2", uri="docker://tuftsttsrt/enrich2:2.0.2")

@@ -2,4 +2,5 @@ Description: Kneaddata is a tool designed to perform quality control on metageno
 Home Page: http://huttenhower.sph.harvard.edu/kneaddata
 Programs: kneaddata,kneaddata_bowtie2_discordant_pairs,kneaddata_build_database,kneaddata_database,kneaddata_read_count_table,kneaddata_test,kneaddata_trf_parallel
 
+version("0.12.3", uri="docker://tuftsttsrt/kneaddata:0.12.3")
 version("0.10.0", uri="docker://biobakery/kneaddata:0.10.0")

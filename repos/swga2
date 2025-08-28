@@ -1,0 +1,5 @@
+Description: SOAPswga (Selective Optimal Amplifying Primers for selective whole-genome amplification)
+Home Page: https://github.com/songlab-cal/swga2
+Programs: soapswga
+
+version("1.0.0", uri="docker://tuftsttsrt/swga2:1.0.0")

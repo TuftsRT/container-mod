@@ -1,0 +1,5 @@
+Description: ASPECT is a code to simulate convection and tectonic processes in Earth and other planetary bodies. It has grown from a pure mantle-convection code into a tool for many geodynamic applications including applications for inner core convection, lithospheric scale deformation, two-phase flow, and numerical methods development.
+Home Page: https://github.com/geodynamics/aspect
+Programs: aspect
+
+version("3.0.0", uri="docker://tuftsttsrt/aspect:3.0.0")
