@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# container-mod v0.1.5
+# container-mod v0.1.6
 #
 # Copyright (c) 2024 Tufts University
 # Author: Yucheng Zhang
@@ -16,7 +16,7 @@
 # It assumes that Singularity or Apptainer is installed and available.
 
 # --- Script Configuration ---
-VERSION="0.1.5"
+VERSION="0.1.6"
 PROGNAME="$(basename "$0")"
 E_OK=0
 
@@ -25,8 +25,7 @@ E_OK=0
 #  Ensures that a container runtime (Singularity or Apptainer) is available.
 ###############################################################################
 
-if ! command -v singularity &>/dev/null && ! module load singularity &>/dev/null && ! module load apptainer &>/dev/null;
-then
+if ! command -v singularity &>/dev/null && ! module load singularity &>/dev/null && ! module load apptainer &>/dev/null; then
     echo "Error: Failed to find or load a container runtime (Singularity/Apptainer)." >&2
     exit 1
 fi
@@ -61,18 +60,15 @@ warn() {
     local withname=0
     local opt OPTIND
 
-    while getopts :p opt;
-    do
+    while getopts :p opt; do
         case $opt in
             p) withname=1 ;;
         esac
     done
     shift $((OPTIND - 1))
 
-    for msg in "$@";
-    do
-        if [[ $withname -ne 0 ]];
-        then
+    for msg in "$@"; do
+        if [[ $withname -ne 0 ]]; then
             msg="$PROGNAME: $msg"
         fi
         echo -e "$msg" 1>&2
@@ -102,15 +98,13 @@ _prompt_for_local_details() {
 
     local app version
     read -r -p "-> Enter the application name: " app
-    if [[ -z "$app" ]];
-    then
+    if [[ -z "$app" ]]; then
         warn -p "Error: Application name cannot be empty."
         return 1
     fi
 
     read -r -p "-> Enter the application version: " version
-    if [[ -z "$version" ]];
-    then
+    if [[ -z "$version" ]]; then
         warn -p "Error: Version cannot be empty."
         return 1
     fi
@@ -138,14 +132,11 @@ _ensure_uri_details_cached() {
 
     # Handle remote URIs by parsing them
     local app ver
-	if [[ "$uri" == */qiime2/core:* ]];
-	then
+	if [[ "$uri" == */qiime2/core:* ]]; then
 		app="qiime2"
-	elif [[ "$uri" == */nvidia/clara/clara-parabricks:* ]];
-	then
+	elif [[ "$uri" == */nvidia/clara/clara-parabricks:* ]]; then
 		app="parabricks"
-    elif [[ "$uri" == */nvidia/devtools/nsight-systems-cli:* ]];
-    then
+    elif [[ "$uri" == */nvidia/devtools/nsight-systems-cli:* ]]; then
         app="nsightsys"
 	else
 		app="${uri##*/}" # Get the last component of the path
@@ -174,7 +165,6 @@ ${scriptname} v$VERSION - Container Module Generator
 
 This script streamlines pulling container images and generating corresponding
 modulefiles and wrapper scripts.
-
 Usage:
     ${scriptname} <subcommand> [options] <URIs>
 
@@ -192,6 +182,7 @@ Options:
   -p, --personal          Create files in your personal directories (~/privatemodules, etc.).
   --profile               Use a specific configuration profile.
   -j, --jupyter           Generate a Jupyter kernel for the container.
+  -t, --tcl               Generate a Tcl modulefile instead of the default Lua.
   -h, --help              Display this help message and exit.
 
 Examples:
@@ -203,26 +194,19 @@ EOF
 
 # Lists available configuration profiles.
 list_profiles() {
-    if [ -d "${PROFILEHOMEDIR}" ];
-    then
-        for PROFILE in "${PROFILEHOMEDIR}"/*;
-        do
+    if [ -d "${PROFILEHOMEDIR}" ]; then
+        for PROFILE in "${PROFILEHOMEDIR}"/*; do
             PROFILENAME="$(basename "${PROFILE}")"
-            if [ "${PROFILENAME}" != "*" ];
-            then
+            if [ "${PROFILENAME}" != "*" ]; then
                 echo "${PROFILENAME}  (Personal Profile)"
             fi
         done
     fi
-    if [ -d "${PROFILEROOT}" ];
-    then
-        for PROFILE in "${PROFILEROOT}"/*;
-        do
+    if [ -d "${PROFILEROOT}" ]; then
+        for PROFILE in "${PROFILEROOT}"/*; do
             PROFILENAME="$(basename "${PROFILE}")"
-            if [ "${PROFILENAME}" != "*" ];
-            then
-                if [ -e "${PROFILEHOMEDIR}/${PROFILENAME}" ];
-                then
+            if [ "${PROFILENAME}" != "*" ]; then
+                if [ -e "${PROFILEHOMEDIR}/${PROFILENAME}" ]; then
                     echo "${PROFILENAME}  (Overridden)"
                 else
                     echo "${PROFILENAME}"
@@ -239,8 +223,7 @@ boxify_text() {
 	local msg=("$@")
 	local line longest width=0
 	for line in "${msg[@]}"; do
-		if [[ ${#line} -gt $width ]];
-		then
+		if [[ ${#line} -gt $width ]]; then
 			longest="$line"
 			width="${#line}"
 		fi
@@ -270,8 +253,7 @@ create_dir() {
 handle_subcommand() {
     local cmd="$1"
     shift
-    for URI in "$@";
-    do
+    for URI in "$@"; do
         local bold_uri; bold_uri="\e[1m${URI}\e[0m"
         local bold_cmd; bold_cmd="\e[1m${cmd}\e[0m"
         echo -e "-> Processing URI ${bold_uri} with subcommand ${bold_cmd}"
@@ -290,8 +272,7 @@ ensure_appinfo_dir() {
             warn -p "Error: Failed to create directory $HOME/container-apps"
             return 1
         }
-        if [[ -d "$AppInfo_DIR" ]];
-        then
+        if [[ -d "$AppInfo_DIR" ]]; then
             cp -r "$AppInfo_DIR" "$HOME/container-apps/" || {
                 warn -p "Error: Failed to copy $AppInfo_DIR to $HOME/container-apps/"
                 return 1
@@ -307,8 +288,7 @@ ensure_appinfo_dir() {
 # @param $1 - The container URI.
 ensure_appinfo_file() {
     local URI="$1"
-    if [[ -z "$URI" ]];
-    then
+    if [[ -z "$URI" ]]; then
         warn -p "Error: URI parameter is missing."
         return 1
     fi
@@ -319,8 +299,7 @@ ensure_appinfo_file() {
     }
     local target_path
     if [[ ! -f "$HOME/container-apps/repos/$app" && ! -f "$AppInfo_DIR/$app" ]]; then
-    	if [[ "$personal" -eq 1 ]];
-    	then
+    	if [[ "$personal" -eq 1 ]]; then
         	target_path="$HOME/container-apps/repos/$app"
     	else
         	target_path="$AppInfo_DIR/$app"
@@ -344,8 +323,7 @@ ensure_appinfo_file() {
 # @echo The resulting image filename (e.g., quay.io_biocontainers_vcftools:0.1.16.sif).
 uri2imgname() {
 	local uri="$1"
-    if [[ -f "$uri" ]];
-    then
+    if [[ -f "$uri" ]]; then
         basename "$uri"
         return 0
     fi
@@ -355,7 +333,7 @@ uri2imgname() {
 	echo "$file"
 }
 
-# Converts a URI to a modulefile path (app/version.lua).
+# Converts a URI to a modulefile path (e.g., app/version.lua or app/version).
 # @param $1 - The container URI.
 # @echo The resulting modulefile path.
 uri2modname() {
@@ -364,7 +342,12 @@ uri2modname() {
     app=$(uri2app "$uri") || return 1
 	local modver
     modver=$(uri2ver "$uri") || return 1
-	echo "$app/$modver.lua"
+
+    if [[ $tcl_mode -eq 1 ]]; then
+        echo "$app/$modver" # Tcl modules often have no extension
+    else
+        echo "$app/$modver.lua" # Lua modules use .lua
+    fi
 }
 
 # Retrieves the cached application name for a URI.
@@ -391,25 +374,21 @@ pull() {
     local uri=$1
     local is_local_file=0
     # If the URI is a local file, do nothing.
-    if [[ -f "$uri" ]];
-    then
+    if [[ -f "$uri" ]]; then
         is_local_file=1
-    elif [[ "$uri" != *"://"* ]];
-    then
+    elif [[ "$uri" != *"://"* ]]; then
         warn -p "Error: The specified local file does not exist: $uri"
         return 1
     fi
 
-    if [[ $is_local_file -eq 1 ]];
-    then
+    if [[ $is_local_file -eq 1 ]]; then
         echo "   Local image file detected. Leaving it in its original location: $uri"
         return 0
     fi
 
     local imgname; imgname=$(uri2imgname "$uri") || return 1
     local image_outdir
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         image_outdir="$PRIVATE_IMAGEDIR"
     else
         image_outdir="$PUBLIC_IMAGEDIR"
@@ -417,8 +396,7 @@ pull() {
 
     local target_image_path="${image_outdir}/${imgname}"
 
-    if [[ -e "$target_image_path" && $force -eq 0 ]];
-    then
+    if [[ -e "$target_image_path" && $force -eq 0 ]]; then
         echo "   Image already exists: ${target_image_path}. Skipping."
         return 0
     fi
@@ -431,13 +409,11 @@ pull() {
     echo "   Container image is saved to: $target_image_path"
 
     # --- RE-ADDED REPOSITORY UPDATE LOGIC ---
-    if [[ $update_repo -eq 1 ]];
-    then
+    if [[ $update_repo -eq 1 ]]; then
         local app; app=$(uri2app "$uri") || return 1
         local version; version=$(uri2ver "$uri") || return 1
         local app_file="$AppInfo_DIR/$app"
-        if [[ $personal -eq 1 ]];
-        then
+        if [[ $personal -eq 1 ]]; then
              app_file="$HOME/container-apps/repos/$app"
         fi
         if [[ ! -f "$app_file" ]]; then
@@ -480,8 +456,7 @@ pull() {
 module() {
     local URI="$1"
     local module_outdir
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         module_outdir="$PRIVATE_MODULEDIR"
     else
         module_outdir="$MOD_OUTDIR"
@@ -490,8 +465,7 @@ module() {
     local modname; modname=$(uri2modname "$URI") || return 1
     local OUTFILE="${module_outdir}/${modname}"
 
-    if [[ -f "$OUTFILE" && $force -eq 0 ]];
-    then
+    if [[ -f "$OUTFILE" && $force -eq 0 ]]; then
         echo "   Modulefile already exists: $OUTFILE. Skipping."
         return 0
     fi
@@ -506,8 +480,7 @@ module() {
     # This command substitution captures the output of print_modulefile
     local MODULE; MODULE=$(print_modulefile "$URI")
 
-    if echo "$MODULE" > "$OUTFILE";
-    then
+    if echo "$MODULE" > "$OUTFILE"; then
         # Set permissions to 644 (read-only for others).
         chmod 644 "$OUTFILE"
         echo "   Generated module: $OUTFILE"
@@ -522,11 +495,19 @@ module() {
 # @echo The content of the generated modulefile.
 print_modulefile() {
     local uri="$1"
+
+    # Tcl repurposing is not supported; always generate from the template.
+    if [[ $tcl_mode -eq 1 ]]; then
+        echo "   Tcl mode enabled. Generating a new module from template." >&2
+        generate_new_modulefile "$uri"
+        return $?
+    fi
+
+    # Original logic for Lua files
     local app; app=$(uri2app "$uri") || return 1
     local latest_modulefile; latest_modulefile=$(find_latest_modulefile "$app")
 
-    if [[ -z "$latest_modulefile" ]];
-    then
+    if [[ -z "$latest_modulefile" ]]; then
         echo "   No existing modulefile found for '$app'. Generating a new one." >&2
         generate_new_modulefile "$uri"
     else
@@ -545,27 +526,22 @@ find_latest_modulefile() {
     local latest_time=0
     local MOD_EXISTING_DIRS
 
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         MOD_EXISTING_DIRS=("$HOME/privatemodules" "$MOD_EXISTING_DIR")
     else
         MOD_EXISTING_DIRS=("$MOD_EXISTING_DIR")
     fi
 
-    for dir in "${MOD_EXISTING_DIRS[@]}";
-    do
+    for dir in "${MOD_EXISTING_DIRS[@]}"; do
         # Skip if directory is empty or doesn't exist.
-        if [[ -z "$dir" || ! -d "$dir/$app" ]];
-        then
+        if [[ -z "$dir" || ! -d "$dir/$app" ]]; then
             continue
         fi
         # Loop through all .lua files and find the newest one.
-        for f in "$dir/$app/"*.lua;
-        do
+        for f in "$dir/$app/"*.lua; do
             [[ -e "$f" ]] || continue
             current_time=$(stat -c %Y "$f")
-            if (( current_time > latest_time ));
-            then
+            if (( current_time > latest_time )); then
                 latest_time=$current_time
                 latest_file="$f"
             fi
@@ -580,8 +556,7 @@ find_latest_modulefile() {
 generate_new_modulefile() {
     local uri="$1"
     local exec_outdir
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         exec_outdir="${PRIVATE_EXECUTABLE_DIR/#\$HOME/$HOME}"
     else
         exec_outdir="$PUBLIC_EXECUTABLE_DIR"
@@ -601,7 +576,13 @@ generate_new_modulefile() {
         *) registry="DockerHub"; docker_repo=$(echo "$uri" | sed 's|docker://\([^:]*\):.*|\1|'); registry_url="https://hub.docker.com/r/${docker_repo}" ;;
     esac
 
-    local template_file="${TEMPLATE_DIR}/module_template.lua"
+    local template_file
+    if [[ $tcl_mode -eq 1 ]]; then
+        template_file="${TEMPLATE_DIR}/module_template_tcl"
+    else
+        template_file="${TEMPLATE_DIR}/module_template.lua"
+    fi
+
     if [[ ! -f "$template_file" ]]; then
         warn -p "Error: Template file '$template_file' not found."
         return 1
@@ -667,14 +648,12 @@ exec() {
     local ver; ver=$(uri2ver "$uri") || return 1
 
     local image_dir_for_wrapper image_name_for_wrapper
-    if [[ -f "$uri" ]];
-    then
+    if [[ -f "$uri" ]]; then
         local absolute_path; absolute_path="$(realpath "$uri")"
         image_dir_for_wrapper="$(dirname "$absolute_path")"
         image_name_for_wrapper="$(basename "$absolute_path")"
     else
-        if [[ $personal -eq 1 ]];
-        then
+        if [[ $personal -eq 1 ]]; then
             image_dir_for_wrapper="$PRIVATE_IMAGEDIR"
         else
             image_dir_for_wrapper="$PUBLIC_IMAGEDIR"
@@ -689,34 +668,28 @@ exec() {
     fi
 
     local exec_outdir
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         exec_outdir="$PRIVATE_EXECUTABLE_DIR"
     else
         exec_outdir="$EXEC_OUTDIR"
     fi
 
     local AppTool_dir="${exec_outdir}/${app}/${ver}/bin"
-    if [[ -d "$AppTool_dir" && $force -eq 0 ]];
-    then
+    if [[ -d "$AppTool_dir" && $force -eq 0 ]]; then
         warn -p "Output directory $AppTool_dir already exists. Skipping."
         return 0
     fi
 
-    if [[ -d "$AppTool_dir" && $force -eq 1 ]];
-    then
+    if [[ -d "$AppTool_dir" && $force -eq 1 ]]; then
         echo "   Force option enabled, removing existing directory $AppTool_dir"
         rm -rf "$AppTool_dir" || { warn -p "Failed to remove dir $AppTool_dir"; exit 1; }
     fi
     mkdir -p "$AppTool_dir" || { warn -p "Failed to create dir $AppTool_dir"; exit 1; }
 
     echo "   Generating executables for $app version $ver..."
-    for command_exec in "${exec_array[@]}";
-    do
-        if confirm_exec_exists "$command_exec" "${image_dir_for_wrapper}/${image_name_for_wrapper}";
-        then
-            if generate_executable "$app" "$ver" "$command_exec" "$image_dir_for_wrapper" "$image_name_for_wrapper" "$AppTool_dir";
-            then
+    for command_exec in "${exec_array[@]}"; do
+        if confirm_exec_exists "$command_exec" "${image_dir_for_wrapper}/${image_name_for_wrapper}"; then
+            if generate_executable "$app" "$ver" "$command_exec" "$image_dir_for_wrapper" "$image_name_for_wrapper" "$AppTool_dir"; then
                 echo "     -> Successfully generated: $command_exec"
             else
                 warn -p "     -> Error: Failed to generate executable: $command_exec"
@@ -753,8 +726,7 @@ generate_executable() {
     local app=$1 version=$2 command=$3 image_dir=$4 image_name=$5 AppTool_dir=$6
     local executable="${AppTool_dir}/${command}"
 
-    if [[ -z "$app" || -z "$version" || -z "$command" || -z "$image_dir" || -z "$image_name" || -z "$AppTool_dir" ]];
-    then
+    if [[ -z "$app" || -z "$version" || -z "$command" || -z "$image_dir" || -z "$image_name" || -z "$AppTool_dir" ]]; then
         warn -p "Error: Missing arguments for generate_executable"
         return 1
     fi
@@ -780,8 +752,7 @@ fi
 
 # Determine GPU flags for Singularity
 OPTIONS=""
-if nvidia-smi -L &> /dev/null;
-then
+if nvidia-smi -L &> /dev/null; then
     OPTIONS="--nv"
 fi
 if rocm-smi -L &> /dev/null; then
@@ -828,17 +799,14 @@ parse_home_description() {
     local app_file
     # Search for the app info file in both personal and system repos
     APP_INFO_PATH=("$HOME/container-apps/repos" "$AppInfo_DIR")
-    for path in "${APP_INFO_PATH[@]}";
-    do
-        if [[ -f "$path/$app" ]];
-        then
+    for path in "${APP_INFO_PATH[@]}"; do
+        if [[ -f "$path/$app" ]]; then
             app_file="$path/$app"
             break
         fi
     done
 
-    if [[ -f "$app_file" ]];
-    then
+    if [[ -f "$app_file" ]]; then
         description=$(grep -m1 "^Description:" "$app_file" | sed 's/^Description: //')
         homepage=$(grep -m1 "^Home Page:" "$app_file" | sed 's/^Home Page: //')
     fi
@@ -850,10 +818,8 @@ parse_exec() {
     local app_file
     # Search for the app info file in both personal and system repos
     APP_INFO_PATH=("$HOME/container-apps/repos" "$AppInfo_DIR")
-    for path in "${APP_INFO_PATH[@]}";
-    do
-        if [[ -f "$path/$app" ]];
-        then
+    for path in "${APP_INFO_PATH[@]}"; do
+        if [[ -f "$path/$app" ]]; then
             app_file="$path/$app"
             break
         fi
@@ -866,8 +832,7 @@ parse_exec() {
 
     local executables
     executables=$(grep -m1 "^Programs:" "$app_file" | sed 's/^Programs: //')
-    if [[ -z "$executables" ]];
-    then
+    if [[ -z "$executables" ]]; then
         return 1
     fi
 
@@ -890,16 +855,14 @@ jupyter() {
     local kernel_name="${app}-${ver}"
     local kernel_dir
 
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         kernel_dir="$HOME/.local/share/jupyter/kernels/$kernel_name"
     else
         kernel_dir="${JUPYTER_OUTDIR}/${kernel_name}"
     fi
 
     local image_outdir
-    if [[ $personal -eq 1 ]];
-    then
+    if [[ $personal -eq 1 ]]; then
         image_outdir="$PRIVATE_IMAGEDIR"
     else
         image_outdir="$PUBLIC_IMAGEDIR"
@@ -918,8 +881,7 @@ jupyter() {
         cp "$SCRIPT_TOP_DIR/jupyter_kernel.json" "${kernel_dir}/kernel.json"
 
         local exec_outdir
-        if [[ $personal -eq 1 ]];
-        then
+        if [[ $personal -eq 1 ]]; then
             exec_outdir="${PRIVATE_EXECUTABLE_DIR/#\$HOME/$HOME}"
         else
             exec_outdir="$PUBLIC_EXECUTABLE_DIR"
@@ -950,6 +912,7 @@ jupyter() {
 force=0
 personal=0
 jupyter=0
+tcl_mode=0
 SCRIPT_TOP_DIR="$(realpath "${BASH_SOURCE[0]}" | xargs dirname)"
 TEMPLATE_DIR="$SCRIPT_TOP_DIR/templates"
 AppInfo_DIR="${SCRIPT_TOP_DIR}/repos"
@@ -966,21 +929,18 @@ PROFILEHOMEDIR="$HOME/container-apps/profiles"
 
 # --- Argument and Subcommand Parsing ---
 SUBCOMMAND="$1"
-if [[ -z "$SUBCOMMAND" || "$SUBCOMMAND" == "-h" || "$SUBCOMMAND" == "--help" ]];
-then
+if [[ -z "$SUBCOMMAND" || "$SUBCOMMAND" == "-h" || "$SUBCOMMAND" == "--help" ]]; then
     help_message
     exit 0
 fi
-if [[ "$SUBCOMMAND" == "-l" || "$SUBCOMMAND" == "--list" ]];
-then
+if [[ "$SUBCOMMAND" == "-l" || "$SUBCOMMAND" == "--list" ]]; then
     list_profiles
     exit 0
 fi
 shift # Move past the subcommand
 
 declare -a ARGV
-while [[ -n "$1" ]];
-do
+while [[ -n "$1" ]]; do
     case $1 in
         --profile) shift; PROFILE="$1" ;;
         -d|--dir|--directory) shift; OUTDIR="$1" ;;
@@ -989,6 +949,7 @@ do
         -u|--update) update_repo=1 ;;
         -p|--personal) personal=1 ;;
         -j|--jupyter) jupyter=1 ;;
+        -t|--tcl) tcl_mode=1 ;;
         --) shift; break ;;
         -*) warn -p "Unknown option: $1"; help_message; exit 1 ;;
         *) ARGV+=("$1") ;;
@@ -998,13 +959,11 @@ done
 set -- "${ARGV[@]}" # Set positional parameters to remaining arguments
 
 # --- Profile Loading ---
-if [[ -n "$PROFILE" ]];
-then
+if [[ -n "$PROFILE" ]]; then
     if [[ -f "${PROFILEHOMEDIR}/$PROFILE" ]]; then
         echo "Loading personal profile: $PROFILE"
         source "${PROFILEHOMEDIR}/$PROFILE"
-    elif [[ -f "${PROFILEROOT}/$PROFILE" ]];
-    then
+    elif [[ -f "${PROFILEROOT}/$PROFILE" ]]; then
         echo "Loading system profile: $PROFILE"
         source "${PROFILEROOT}/$PROFILE"
     else
@@ -1028,8 +987,7 @@ for URI in "$@"; do
 done
 
 # Create output directories
-if [[ $personal -eq 1 ]];
-then
+if [[ $personal -eq 1 ]]; then
     create_dir "$PRIVATE_EXECUTABLE_DIR" "Created personal executable directory"
     create_dir "$PRIVATE_MODULEDIR" "Created personal module directory"
     create_dir "$PRIVATE_IMAGEDIR" "Created personal image directory"
@@ -1056,14 +1014,12 @@ case "$SUBCOMMAND" in
 esac
 
 # --- Final User Messages ---
-if [[ "$SUBCOMMAND" == "module" || "$SUBCOMMAND" == "pipe" ]];
-then
+if [[ "$SUBCOMMAND" == "module" || "$SUBCOMMAND" == "pipe" ]]; then
     for URI in "$@"; do
         app=$(uri2app "$URI") || continue
         ver=$(uri2ver "$URI") || continue
         modname=$(uri2modname "$URI") || continue
-        if [[ $personal -eq 1 ]];
-        then
+        if [[ $personal -eq 1 ]]; then
             MSG=( "To use this module, load:" "" "    module load use.own" "    module load $app/$ver" )
         else
             MSG=( "To use this module, load:" "" "    module use $MOD_OUTDIR" "    module load $app/$ver" )
