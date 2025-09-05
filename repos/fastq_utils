@@ -1,0 +1,4 @@
+Description: Fastq utils is a set of Linux utilities to validate and manipulate fastq files. It also includes a set of programs to preprocess barcodes (namely UMIs, cells and samples), add the barcodes as tags in BAM files and count UMIs.
+Home Page: https://github.com/nunofonseca/fastq_utils
+Programs: fastq_info,fastq_filterpair,fastq_filter_n,fastq_num_reads,fastq_trim_poly_at,fastq_pre_barcodes,bam_add_tags,bam_umi_count,fastq2bam,bam2fastq
+version("0.25.3", uri="docker://quay.io/biocontainers/fastq_utils:0.25.3--ha9dfd29_0")
