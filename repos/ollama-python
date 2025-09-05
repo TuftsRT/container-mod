@@ -2,5 +2,6 @@ Description: The ollama python library provides the easiest way to integrate you
 Home Page:https://github.com/ollama/ollama-python
 Programs: python,python3,pip,pip3
 
+version("0.5.3", uri="docker://tuftsttsrt/ollama-python:0.5.3")
 version("0.4.7", uri="docker://tuftsttsrt/ollama-python:0.4.7")
 version("0.4.7", uri="docker://tuftsttsrt/ollama-python:0.4.7")

@@ -1,0 +1,4 @@
+Description: EE110 (Optimization in Deep Learning at Tufts University) is taught by Dr. Mai Vu.
+Home Page: https://engineering.tufts.edu/cs/current-students/courses-and-registration
+Programs: conda,pip,pip3,python,python3
+version("project1", uri="docker://tuftsttsrt/ee110:project1")

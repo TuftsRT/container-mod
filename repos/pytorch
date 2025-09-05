@@ -2,5 +2,6 @@ Description:  PyTorch is an open source machine learning (ML) framework based on
 Home Page: https://pytorch.org
 Programs: python,python3,pip,pip3
 
+version("2.8.0-cuda12.9-cudnn9", uri="docker://tuftsttsrt/pytorch:2.8.0-cuda12.9-cudnn9")
 version("2.7.1-cuda11.8-cudnn9-runtime-jupyter", uri="docker://tuftsttsrt/pytorch:2.7.1-cuda11.8-cudnn9-runtime-jupyter")
 version("2.5.1-cuda12.1-cudnn9-runtime-jupyter", uri="docker://tuftsttsrt/pytorch:2.5.1-cuda12.1-cudnn9-runtime-jupyter")

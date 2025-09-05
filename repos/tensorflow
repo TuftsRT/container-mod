@@ -2,5 +2,7 @@ Description: TensorFlow is an end-to-end open source platform for machine learni
 Home Page: https://github.com/tensorflow/tensorflow
 Programs: python,python3,pip,pip3
 
+version("2.20.0", uri="docker://tuftsttsrt/tensorflow:2.20.0")
+version("2.20.0rc0-gpu-jupyter", uri="docker://tensorflow/tensorflow:2.20.0rc0-gpu-jupyter")
 version("2.15.0-gpu-jupyter", uri="docker://tensorflow/tensorflow:2.15.0-gpu-jupyter")
 version("2.18.0-gpu-jupyter", uri="docker://tensorflow/tensorflow:2.18.0-gpu-jupyter")

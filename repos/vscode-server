@@ -2,3 +2,4 @@ Description: Run VS Code on any machine anywhere and access it in the browser.
 Home Page: https://github.com/coder/code-server
 Programs: code-server
 
+version("4.102.3", uri="docker://tuftsttsrt/vscode-server:4.102.3")

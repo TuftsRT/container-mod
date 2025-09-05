@@ -1,0 +1,6 @@
+Description: An open source command line toolkit for processing aerial drone imagery.
+Home Page: https://github.com/OpenDroneMap/ODM
+Programs: python3
+
+version("3.5.6", uri="docker://opendronemap/odm:3.5.6")
+version("gpu", uri="docker://opendronemap/odm:gpu")

@@ -1,3 +1,3 @@
-MOD_EXISTING_DIR_DEF="/cluster/tufts/hpc/tools/miniforge3/envs/modules"  # Directory to store ready-to-use modulefiles
-PUBLIC_IMAGEDIR="/cluster/tufts/hpc/tools/miniforge3/envs/images"
-PUBLIC_EXECUTABLE_DIR="/cluster/tufts/hpc/tools/miniforge3/envs/tools"
+MOD_EXISTING_DIR_DEF="/cluster/tufts/apps/class/modules"  # Directory to store ready-to-use modulefiles
+PUBLIC_IMAGEDIR="/cluster/tufts/apps/class/images"
+PUBLIC_EXECUTABLE_DIR="/cluster/tufts/apps/class/tools"
