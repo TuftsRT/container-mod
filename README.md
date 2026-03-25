@@ -1,5 +1,7 @@
 # container-mod
 
+![container-mod icon](icon.png)
+
 `container-mod` converts container images into HPC-friendly environment modules.
 It can pull a container image, generate an Lmod modulefile, create wrapper
 scripts for the programs exposed by that container, and optionally register a
