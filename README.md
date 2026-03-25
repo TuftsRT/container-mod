@@ -90,6 +90,48 @@ The profile files live in [`profiles/`](/Users/yucheng/Documents/GitHub/containe
 
 You can also create personal profile overrides in `~/container-apps/profiles`.
 
+Profile variables map to runtime behavior like this:
+
+- `MOD_EXISTING_DIR_DEF`: existing shared module tree to search when reusing a prior modulefile
+- `PUBLIC_IMAGEDIR`: destination for pulled container images in profile-backed mode
+- `PUBLIC_EXECUTABLE_DIR`: shared wrapper root used when rendering new modulefiles
+
+When a profile is active, the script still writes newly generated modulefiles to
+`<OUTDIR>/incomplete` unless you are in personal mode. This lets you stage and
+review generated modules before moving them into a shared production tree.
+
+### Creating a Custom Profile
+
+Create a plain shell file in `~/container-apps/profiles/<name>` or add one under
+[`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles). A minimal
+profile looks like:
+
+```bash
+MOD_EXISTING_DIR_DEF="/cluster/example/modules"
+PUBLIC_IMAGEDIR="/cluster/example/images"
+PUBLIC_EXECUTABLE_DIR="/cluster/example/tools"
+```
+
+Then use it with:
+
+```bash
+./container-mod pipe --profile <name> docker://quay.io/biocontainers/seqkit:2.10.0--h9ee0642_0
+```
+
+### `--profile` vs `--personal`
+
+Use `--profile` when you want cluster-specific shared locations and existing
+module trees defined by an administrator or site convention.
+
+Use `-p/--personal` when you want everything placed under your home directory:
+
+- images in `~/container-apps/images`
+- wrappers in `~/container-apps/tools`
+- metadata in `~/container-apps/repos`
+- modules in `~/privatemodules`
+
+If you do not pass `--profile`, the script defaults to personal mode.
+
 ## Usage
 
 ```bash

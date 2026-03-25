@@ -259,6 +259,8 @@ Options:
 Examples:
     ${scriptname} pull docker://quay.io/biocontainers/vcftools:0.1.16
     ${scriptname} pipe -p docker://quay.io/biocontainers/vcftools:0.1.16
+    ${scriptname} pipe --profile biocontainers docker://quay.io/biocontainers/vcftools:0.1.16
+    ${scriptname} module --profile ngc --module-system tcl docker://nvcr.io/nvidia/pytorch:25.01-py3
 
 EOF
 }
