@@ -325,6 +325,28 @@ create_dir() {
     if [[ ! -d "$dir_path" ]]; then
         mkdir -p -m 755 "$dir_path"
         echo "$message: $dir_path"
+    else
+        chmod 755 "$dir_path"
+    fi
+}
+
+ensure_dir_access() {
+    local dir_path="$1"
+    mkdir -p "$dir_path" || return 1
+    chmod 755 "$dir_path"
+}
+
+ensure_tree_access() {
+    local root_path="$1"
+    local file_mode="$2"
+
+    [[ -e "$root_path" ]] || return 0
+
+    if [[ -d "$root_path" ]]; then
+        find "$root_path" -type d -exec chmod 755 {} +
+        find "$root_path" -type f -exec chmod "$file_mode" {} +
+    else
+        chmod "$file_mode" "$root_path"
     fi
 }
 
@@ -529,6 +551,10 @@ pull() {
     echo -e "   \e[1mPulling Singularity image...\e[0m"
     "$CONTAINER_RUNTIME" pull --force "$target_image_path" "$uri" || exit 1
     chmod 644 "$target_image_path"
+    ensure_dir_access "$image_outdir" || {
+        warn -p "Error: Failed to set permissions on image directory '$image_outdir'"
+        return 1
+    }
     echo "   Pull complete."
     echo "   Container image is saved to: $target_image_path"
 
@@ -600,11 +626,10 @@ module() {
     fi
 
     # Ensure the directory exists and has 755 permissions
-    mkdir -p "$(dirname "$OUTFILE")" || {
+    ensure_dir_access "$(dirname "$OUTFILE")" || {
         warn -p "Error: Failed to create directory for '$OUTFILE'"
         exit 1
     }
-    chmod 755 "$(dirname "$OUTFILE")"
 
     # This command substitution captures the output of print_modulefile
     local MODULE; MODULE=$(print_modulefile "$URI")
@@ -613,6 +638,7 @@ module() {
     then
         # Set permissions to 644 (read-only for others).
         chmod 644 "$OUTFILE"
+        ensure_tree_access "${module_outdir}/$(uri2app "$URI")" 644
         echo "   Generated module: $OUTFILE"
     else
         warn -p "Error: Failed to write to '$OUTFILE'"
@@ -826,7 +852,7 @@ exec() {
         echo "   Force option enabled, removing existing directory $AppTool_dir"
         rm -rf "$AppTool_dir" || { warn -p "Failed to remove dir $AppTool_dir"; exit 1; }
     fi
-    mkdir -p "$AppTool_dir" || { warn -p "Failed to create dir $AppTool_dir"; exit 1; }
+    ensure_dir_access "$AppTool_dir" || { warn -p "Failed to create dir $AppTool_dir"; exit 1; }
 
     echo "   Generating executables for $app version $ver..."
     for command_exec in "${exec_array[@]}";
@@ -844,8 +870,7 @@ exec() {
         fi
     done
 
-    # Ensure all directories within the app's exec folder are 755
-    find "${exec_outdir}/${app}" -type d -exec chmod 755 {} +
+    ensure_tree_access "${exec_outdir}/${app}" 755
     
     echo "   Executables generated in: ${exec_outdir}/${app}/${ver}"
 }
@@ -877,7 +902,7 @@ generate_executable() {
         return 1
     fi
 
-    mkdir -p "$(dirname "$executable")"
+    ensure_dir_access "$(dirname "$executable")" || return 1
 
     # Create the wrapper script with a heredoc
 cat <<EOF >"$executable"
@@ -1038,7 +1063,10 @@ jupyter() {
 
     # Create kernel directory and kernel.json file
     if [[ ! -d "$kernel_dir" ]]; then
-        mkdir -p "$kernel_dir"
+        ensure_dir_access "$kernel_dir" || {
+            warn -p "Error: Failed to create kernel directory '$kernel_dir'"
+            return 1
+        }
         cp "$SCRIPT_TOP_DIR/jupyter_kernel.json" "${kernel_dir}/kernel.json"
 
         local exec_outdir
@@ -1064,6 +1092,7 @@ jupyter() {
             -e "s|VERSION|$esc_ver|g" \
             "${kernel_dir}/kernel.json" > "$kernel_tmp"
         mv "$kernel_tmp" "${kernel_dir}/kernel.json"
+        ensure_tree_access "$kernel_dir" 644
     else
         echo "   Kernel already exists: $kernel_dir. Skipping."
     fi
