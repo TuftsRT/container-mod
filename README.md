@@ -314,3 +314,17 @@ and
 [`templates/module_template.tcl`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.tcl)
 and the profile files in
 [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles).
+
+## License
+
+This project is released under the MIT License. See
+[`LICENSE`](/Users/yucheng/Documents/GitHub/container-mod/LICENSE).
+
+## Contributor
+
+<img src="https://github.com/zhan4429.png" alt="Yucheng Zhang" width="120">
+
+Yucheng Zhang  
+Research Technology, Tufts Technology Services  
+Tufts University  
+yucheng.zhang@tufts.edu
