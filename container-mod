@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -uo pipefail
+
 # container-mod v0.1.5
 #
 # Copyright (c) 2024 Tufts University
@@ -19,27 +21,87 @@
 VERSION="0.1.5"
 PROGNAME="$(basename "$0")"
 E_OK=0
+CONTAINER_RUNTIME=""
+CONTAINER_MODULE_NAME=""
+MODULE_SYSTEM="lmod"
 
 ###############################################################################
 #  PREREQUISITE CHECK
 #  Ensures that a container runtime (Singularity or Apptainer) is available.
 ###############################################################################
 
-if ! command -v singularity &>/dev/null && ! module load singularity &>/dev/null && ! module load apptainer &>/dev/null;
-then
-    echo "Error: Failed to find or load a container runtime (Singularity/Apptainer)." >&2
-    exit 1
-fi
+detect_container_runtime() {
+    if command -v singularity &>/dev/null; then
+        CONTAINER_RUNTIME="singularity"
+        CONTAINER_MODULE_NAME="singularity"
+        return 0
+    fi
+
+    if command -v apptainer &>/dev/null; then
+        CONTAINER_RUNTIME="apptainer"
+        CONTAINER_MODULE_NAME="apptainer"
+        return 0
+    fi
+
+    if ! command -v module &>/dev/null; then
+        warn -p "Error: Failed to find a container runtime (Singularity/Apptainer)."
+        return 1
+    fi
+
+    if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
+        CONTAINER_RUNTIME="singularity"
+        CONTAINER_MODULE_NAME="singularity"
+        return 0
+    fi
+
+    if module load apptainer &>/dev/null && command -v apptainer &>/dev/null; then
+        CONTAINER_RUNTIME="apptainer"
+        CONTAINER_MODULE_NAME="apptainer"
+        return 0
+    fi
+
+    warn -p "Error: Failed to find or load a container runtime (Singularity/Apptainer)."
+    return 1
+}
 
 ###############################################################################
 #  HELPER FUNCTIONS
 ###############################################################################
 
 # --- Caches for app name and version to avoid repeated user prompting ---
-declare -A APP_CACHE
-declare -A VER_CACHE
+declare -a CACHE_URIS=()
+declare -a CACHE_APPS=()
+declare -a CACHE_VERSIONS=()
 
 # --- Basic Script Utilities ---
+
+cache_index_for_uri() {
+    local uri="$1"
+    local i
+    for ((i = 0; i < ${#CACHE_URIS[@]}; i++)); do
+        if [[ "${CACHE_URIS[$i]}" == "$uri" ]]; then
+            echo "$i"
+            return 0
+        fi
+    done
+    return 1
+}
+
+cache_set() {
+    local uri="$1"
+    local app="$2"
+    local version="$3"
+    local cache_index=""
+
+    if cache_index=$(cache_index_for_uri "$uri"); then
+        CACHE_APPS[$cache_index]="$app"
+        CACHE_VERSIONS[$cache_index]="$version"
+    else
+        CACHE_URIS+=("$uri")
+        CACHE_APPS+=("$app")
+        CACHE_VERSIONS+=("$version")
+    fi
+}
 
 # Performs any necessary cleanup before the script exits.
 clean_up() {
@@ -94,7 +156,7 @@ sedi_escape() {
 # @return 0 on success, 1 on failure.
 _prompt_for_local_details() {
     local uri="$1"
-    if [[ -v "APP_CACHE[$uri]" ]]; then
+    if cache_index_for_uri "$uri" >/dev/null; then
         return 0
     fi
 
@@ -115,8 +177,7 @@ _prompt_for_local_details() {
         return 1
     fi
 
-    APP_CACHE["$uri"]="$app"
-    VER_CACHE["$uri"]="$version"
+    cache_set "$uri" "$app" "$version"
     return 0
 }
 
@@ -126,7 +187,7 @@ _prompt_for_local_details() {
 # @return 0 on success, 1 on failure.
 _ensure_uri_details_cached() {
     local uri="$1"
-    if [[ -v "APP_CACHE[$uri]" ]]; then
+    if cache_index_for_uri "$uri" >/dev/null; then
         return 0
     fi
 
@@ -157,8 +218,7 @@ _ensure_uri_details_cached() {
 	ver=$(echo "$ver" | sed -re 's/(--.*)?(_[0-9]+)?$//') # Strip version suffixes
 
     # Populate the cache
-    APP_CACHE["$uri"]="$app"
-    VER_CACHE["$uri"]="$ver"
+    cache_set "$uri" "$app" "$ver"
     return 0
 }
 
@@ -191,6 +251,8 @@ Options:
   -u, --update            Update the app info file with the new version.
   -p, --personal          Create files in your personal directories (~/privatemodules, etc.).
   --profile               Use a specific configuration profile.
+  -s, --module-system SYS Choose the module system: lmod or tcl (default: lmod).
+  -t, --tcl               Shortcut for --module-system tcl.
   -j, --jupyter           Generate a Jupyter kernel for the container.
   -h, --help              Display this help message and exit.
 
@@ -264,6 +326,15 @@ create_dir() {
     fi
 }
 
+get_mtime() {
+    local file_path="$1"
+    if stat -c %Y "$file_path" &>/dev/null; then
+        stat -c %Y "$file_path"
+    else
+        stat -f %m "$file_path"
+    fi
+}
+
 # Executes a given subcommand for a list of URIs.
 # @param $1 - The name of the function to call (e.g., "pull", "module").
 # @param $@ - The list of URIs to process.
@@ -334,6 +405,26 @@ ensure_appinfo_file() {
     fi
 }
 
+get_appinfo_file() {
+    local app="$1"
+    local path
+    local search_paths=()
+
+    if [[ $personal -eq 1 ]]; then
+        search_paths+=("$HOME/container-apps/repos")
+    fi
+    search_paths+=("$AppInfo_DIR")
+
+    for path in "${search_paths[@]}"; do
+        if [[ -f "$path/$app" ]]; then
+            echo "$path/$app"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 
 ###############################################################################
 #  URI TO NAME/VERSION/MODULE CONVERTERS
@@ -364,21 +455,30 @@ uri2modname() {
     app=$(uri2app "$uri") || return 1
 	local modver
     modver=$(uri2ver "$uri") || return 1
-	echo "$app/$modver.lua"
+    if [[ "$MODULE_SYSTEM" == "tcl" ]];
+    then
+        echo "$app/$modver"
+    else
+	    echo "$app/$modver.lua"
+    fi
 }
 
 # Retrieves the cached application name for a URI.
 # @param $1 - The container URI.
 # @echo The application name.
 uri2app() {
-    echo "${APP_CACHE[$1]}"
+    local cache_index=""
+    cache_index=$(cache_index_for_uri "$1") || return 1
+    echo "${CACHE_APPS[$cache_index]}"
 }
 
 # Retrieves the cached version for a URI.
 # @param $1 - The container URI.
 # @echo The version string.
 uri2ver() {
-    echo "${VER_CACHE[$1]}"
+    local cache_index=""
+    cache_index=$(cache_index_for_uri "$1") || return 1
+    echo "${CACHE_VERSIONS[$cache_index]}"
 }
 
 ###############################################################################
@@ -425,7 +525,7 @@ pull() {
 
     # Pull the image and set its permissions to 644 (read-only for others).
     echo -e "   \e[1mPulling Singularity image...\e[0m"
-    singularity pull --force "$target_image_path" "$uri" || exit 1
+    "$CONTAINER_RUNTIME" pull --force "$target_image_path" "$uri" || exit 1
     chmod 644 "$target_image_path"
     echo "   Pull complete."
     echo "   Container image is saved to: $target_image_path"
@@ -435,10 +535,11 @@ pull() {
     then
         local app; app=$(uri2app "$uri") || return 1
         local version; version=$(uri2ver "$uri") || return 1
-        local app_file="$AppInfo_DIR/$app"
-        if [[ $personal -eq 1 ]];
-        then
-             app_file="$HOME/container-apps/repos/$app"
+        local app_file
+        if ! app_file=$(get_appinfo_file "$app"); then
+            warn -p "Error: App file for '$app' not found. Please create it first."
+            rm -f "$target_image_path"
+            return 1
         fi
         if [[ ! -f "$app_file" ]]; then
             warn -p "Error: App file '$app_file' not found. Please create it first."
@@ -461,7 +562,7 @@ pull() {
         {
             grep -v '^version(' "$app_file"
             echo "version(\"$version\", uri=\"$repo_uri\")"
-            grep '^version(' "$app_file"
+            grep '^version(' "$app_file" | grep -Fv "version(\"$version\","
         } > "$temp_file"
 
         # Atomically replace the old file with the new one
@@ -522,6 +623,13 @@ module() {
 # @echo The content of the generated modulefile.
 print_modulefile() {
     local uri="$1"
+    if [[ "$MODULE_SYSTEM" == "tcl" ]];
+    then
+        echo "   Tcl module mode enabled. Generating a new module from template." >&2
+        generate_new_modulefile "$uri"
+        return $?
+    fi
+
     local app; app=$(uri2app "$uri") || return 1
     local latest_modulefile; latest_modulefile=$(find_latest_modulefile "$app")
 
@@ -543,7 +651,8 @@ find_latest_modulefile() {
     local app="$1"
     local latest_file=""
     local latest_time=0
-    local MOD_EXISTING_DIRS
+    local current_time=0
+    local MOD_EXISTING_DIRS=()
 
     if [[ $personal -eq 1 ]];
     then
@@ -563,7 +672,7 @@ find_latest_modulefile() {
         for f in "$dir/$app/"*.lua;
         do
             [[ -e "$f" ]] || continue
-            current_time=$(stat -c %Y "$f")
+            current_time=$(get_mtime "$f")
             if (( current_time > latest_time ));
             then
                 latest_time=$current_time
@@ -592,16 +701,22 @@ generate_new_modulefile() {
     local ver; ver=$(uri2ver "$uri") || return 1
     local homepage=""
     local description=""
-    parse_home_description
+    read_home_description "$app"
 
     local registry=""
     local registry_url=""
     case "$uri" in
          *"biocontainers"*) registry="BioContainers"; registry_url="https://biocontainers.pro/tools/$app" ;;
-        *) registry="DockerHub"; docker_repo=$(echo "$uri" | sed 's|docker://\([^:]*\):.*|\1|'); registry_url="https://hub.docker.com/r/${docker_repo}" ;;
+        *) registry="DockerHub"; local docker_repo=""; docker_repo=$(echo "$uri" | sed 's|docker://\([^:]*\):.*|\1|'); registry_url="https://hub.docker.com/r/${docker_repo}" ;;
     esac
 
-    local template_file="${TEMPLATE_DIR}/module_template.lua"
+    local template_file
+    if [[ "$MODULE_SYSTEM" == "tcl" ]];
+    then
+        template_file="${TEMPLATE_DIR}/module_template.tcl"
+    else
+        template_file="${TEMPLATE_DIR}/module_template.lua"
+    fi
     if [[ ! -f "$template_file" ]]; then
         warn -p "Error: Template file '$template_file' not found."
         return 1
@@ -628,6 +743,7 @@ generate_new_modulefile() {
         -e "s|\${VERSION}|$esc_ver|g" \
         -e "s|\${EXECUTABLE_DIR}|$esc_exec_dir|g" \
         -e "s|\${APP}|$esc_app|g" \
+        -e "s|\${RUNTIME_MODULE}|${CONTAINER_MODULE_NAME}|g" \
         "$template_file"
 }
 
@@ -682,8 +798,8 @@ exec() {
         image_name_for_wrapper=$(uri2imgname "$uri") || return 1
     fi
 
-    local exec_array; exec_array=($(parse_exec))
-    if [ $? -ne 0 ]; then
+    local exec_array=()
+    if ! mapfile -t exec_array < <(parse_exec "$app"); then
         warn -p "No executables are defined for '$app'. Skipping exec generation."
         return 0
     fi
@@ -739,7 +855,7 @@ exec() {
 confirm_exec_exists() {
     local exec_cmd="$1"
     local image_path="$2"
-    if ! singularity exec "$image_path" which "$exec_cmd" &> /dev/null; then
+    if ! "$CONTAINER_RUNTIME" exec "$image_path" which "$exec_cmd" &> /dev/null; then
         return 1
     else
         return 0
@@ -762,7 +878,7 @@ generate_executable() {
     mkdir -p "$(dirname "$executable")"
 
     # Create the wrapper script with a heredoc
-    cat <<EOF >"$executable"
+cat <<EOF >"$executable"
 #!/usr/bin/env bash
 # Wrapper script for '$command' from container '$image_name'
 
@@ -772,13 +888,21 @@ PKG="$app"
 PROGRAM="$command"
 IMAGE_DIR="$image_dir"
 IMAGE="$image_name"
+RUNTIME="$CONTAINER_RUNTIME"
 
-# Load singularity if it is not already loaded
-if ! command -v singularity &> /dev/null; then
-    module load singularity || { echo "Failed to load singularity module"; exit 1; }
+# Load the container runtime if it is not already loaded
+if ! command -v "\$RUNTIME" &> /dev/null; then
+    if command -v module &> /dev/null; then
+        module load "$CONTAINER_MODULE_NAME" || { echo "Failed to load $CONTAINER_MODULE_NAME module"; exit 1; }
+    fi
 fi
 
-# Determine GPU flags for singularity
+if ! command -v "\$RUNTIME" &> /dev/null; then
+    echo "Failed to find container runtime: \$RUNTIME"
+    exit 1
+fi
+
+# Determine GPU flags for the container runtime
 OPTIONS=""
 if nvidia-smi -L &> /dev/null;
 then
@@ -789,7 +913,7 @@ if rocm-smi -L &> /dev/null; then
 fi
 
 # Run the container command
-singularity exec \$OPTIONS "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
+"\$RUNTIME" exec \$OPTIONS "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
 EOF
 
     # Set permissions to 755 (executable for all).
@@ -812,9 +936,10 @@ create_appinfo_file() {
     local localappinfo=$2
     echo "'$app' not found in application info database."
     echo "Let's create a new entry..."
-    read -p "Enter a simple description of the application: " description
-    read -p "Enter the application's homepage URL: " homepage
-    read -p "Enter the available programs (comma-separated): " programs
+    local description homepage programs
+    read -r -p "Enter a simple description of the application: " description
+    read -r -p "Enter the application's homepage URL: " homepage
+    read -r -p "Enter the available programs (comma-separated): " programs
     mkdir -p "$(dirname "$localappinfo")"
     {
         echo "Description: $description"
@@ -824,40 +949,26 @@ create_appinfo_file() {
 }
 
 # Parses the 'Description' and 'Home Page' from an app info file.
-parse_home_description() {
-    local app_file
-    # Search for the app info file in both personal and system repos
-    APP_INFO_PATH=("$HOME/container-apps/repos" "$AppInfo_DIR")
-    for path in "${APP_INFO_PATH[@]}";
-    do
-        if [[ -f "$path/$app" ]];
-        then
-            app_file="$path/$app"
-            break
-        fi
-    done
+read_home_description() {
+    local app="$1"
+    local app_file=""
 
-    if [[ -f "$app_file" ]];
-    then
-        description=$(grep -m1 "^Description:" "$app_file" | sed 's/^Description: //')
-        homepage=$(grep -m1 "^Home Page:" "$app_file" | sed 's/^Home Page: //')
+    if ! app_file=$(get_appinfo_file "$app"); then
+        return 1
+    fi
+
+    if [[ -f "$app_file" ]]; then
+        description=$(sed -n 's/^Description: //p' "$app_file" | head -n 1)
+        homepage=$(sed -n 's/^Home Page: //p' "$app_file" | head -n 1)
     fi
 }
 
 # Parses the 'Programs' list from an app info file.
 # @echo A space-separated list of executable names.
 parse_exec() {
+    local app="$1"
     local app_file
-    # Search for the app info file in both personal and system repos
-    APP_INFO_PATH=("$HOME/container-apps/repos" "$AppInfo_DIR")
-    for path in "${APP_INFO_PATH[@]}";
-    do
-        if [[ -f "$path/$app" ]];
-        then
-            app_file="$path/$app"
-            break
-        fi
-    done
+    app_file=$(get_appinfo_file "$app") || app_file=""
 
     if [[ ! -f "$app_file" ]]; then
         warn -p "Error: Application file '$app_file' not found."
@@ -871,9 +982,13 @@ parse_exec() {
         return 1
     fi
 
-    # Convert comma-separated string to an array and echo its elements
+    local entry
     IFS=',' read -r -a arr <<< "$executables"
-    echo "${arr[@]}"
+    for entry in "${arr[@]}"; do
+        entry="${entry#"${entry%%[![:space:]]*}"}"
+        entry="${entry%"${entry##*[![:space:]]}"}"
+        [[ -n "$entry" ]] && echo "$entry"
+    done
 }
 
 ###############################################################################
@@ -889,6 +1004,7 @@ jupyter() {
     local image; image=$(uri2imgname "$uri") || return 1
     local kernel_name="${app}-${ver}"
     local kernel_dir
+    local image_path
 
     if [[ $personal -eq 1 ]];
     then
@@ -897,16 +1013,22 @@ jupyter() {
         kernel_dir="${JUPYTER_OUTDIR}/${kernel_name}"
     fi
 
-    local image_outdir
-    if [[ $personal -eq 1 ]];
+    if [[ -f "$uri" ]];
     then
-        image_outdir="$PRIVATE_IMAGEDIR"
+        image_path="$(realpath "$uri")"
     else
-        image_outdir="$PUBLIC_IMAGEDIR"
+        local image_outdir
+        if [[ $personal -eq 1 ]];
+        then
+            image_outdir="$PRIVATE_IMAGEDIR"
+        else
+            image_outdir="$PUBLIC_IMAGEDIR"
+        fi
+        image_path="${image_outdir}/${image}"
     fi
 
     # Check for ipykernel dependency inside the container
-    if ! singularity exec "${image_outdir}/${image}" python -c "import ipykernel" &> /dev/null; then
+    if ! "$CONTAINER_RUNTIME" exec "$image_path" python -c "import ipykernel" &> /dev/null; then
         MSG=( "The dependency 'ipykernel' was not detected in ${image}." "" "Please add it to your container definition:" "" "   pip install ipython ipykernel" )
         boxify_text "${MSG[@]}"
         exit 1
@@ -930,10 +1052,16 @@ jupyter() {
         local esc_app; esc_app=$(sedi_escape "$app")
         local esc_ver; esc_ver=$(sedi_escape "$ver")
 
-        sed -i -e "s|APPDIR|$esc_apptool_dir|g" \
-               -e "s|APP|$esc_app|g" \
-               -e "s|VERSION|$esc_ver|g" \
-               "${kernel_dir}/kernel.json"
+        local kernel_tmp
+        kernel_tmp=$(mktemp "${kernel_dir}/kernel.json.XXXXXX") || {
+            warn -p "Error: Failed to create temporary kernel file"
+            return 1
+        }
+        sed -e "s|APPDIR|$esc_apptool_dir|g" \
+            -e "s|APP|$esc_app|g" \
+            -e "s|VERSION|$esc_ver|g" \
+            "${kernel_dir}/kernel.json" > "$kernel_tmp"
+        mv "$kernel_tmp" "${kernel_dir}/kernel.json"
     else
         echo "   Kernel already exists: $kernel_dir. Skipping."
     fi
@@ -950,6 +1078,8 @@ jupyter() {
 force=0
 personal=0
 jupyter=0
+update_repo=0
+PROFILE=""
 SCRIPT_TOP_DIR="$(realpath "${BASH_SOURCE[0]}" | xargs dirname)"
 TEMPLATE_DIR="$SCRIPT_TOP_DIR/templates"
 AppInfo_DIR="${SCRIPT_TOP_DIR}/repos"
@@ -976,6 +1106,7 @@ then
     list_profiles
     exit 0
 fi
+detect_container_runtime || exit 1
 shift # Move past the subcommand
 
 declare -a ARGV
@@ -986,8 +1117,10 @@ do
         -d|--dir|--directory) shift; OUTDIR="$1" ;;
         -f|--force) force=1 ;;
         -m|--module-dir|--module-directory) shift; MOD_EXISTING_DIR="$1" ;;
+        -s|--module-system) shift; MODULE_SYSTEM="$1" ;;
         -u|--update) update_repo=1 ;;
         -p|--personal) personal=1 ;;
+        -t|--tcl) MODULE_SYSTEM="tcl" ;;
         -j|--jupyter) jupyter=1 ;;
         --) shift; break ;;
         -*) warn -p "Unknown option: $1"; help_message; exit 1 ;;
@@ -996,6 +1129,18 @@ do
     shift
 done
 set -- "${ARGV[@]}" # Set positional parameters to remaining arguments
+
+if [[ "$MODULE_SYSTEM" != "lmod" && "$MODULE_SYSTEM" != "tcl" ]];
+then
+    warn -p "Error: Unsupported module system '$MODULE_SYSTEM'. Use 'lmod' or 'tcl'."
+    exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+    warn -p "Error: At least one container URI or image path is required."
+    help_message >&2
+    exit 1
+fi
 
 # --- Profile Loading ---
 if [[ -n "$PROFILE" ]];

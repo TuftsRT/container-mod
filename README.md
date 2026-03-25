@@ -1,118 +1,272 @@
 # container-mod
 
-A versatile tool for HPC administrators and users to automatically convert container images into easy-to-use environment modules.
+`container-mod` converts container images into HPC-friendly environment modules.
+It can pull a container image, generate an Lmod modulefile, create wrapper
+scripts for the programs exposed by that container, and optionally register a
+Jupyter kernel. It supports both Lmod and Tcl modulefile output, with Lmod as
+the default.
 
----
+The project is aimed at both HPC administrators publishing shared software
+stacks and users building personal container-backed modules in home space.
 
-## Key Features
+## What It Produces
 
-- **Automated Workflow**: Pulls container images, generates Lmod modulefiles, and creates executable wrappers in a single, streamlined process.
-- **Seamless Execution**: Generates wrapper scripts for programs inside a container, allowing users to run them as if they were native applications.
-- **Flexible Modes**: Supports both system-wide installation for all HPC users and a "personal mode" for individual user workflows.
-- **Jupyter Integration**: Can automatically create Jupyter kernels from compatible containers for use in JupyterHub or Open OnDemand.
-- **Extensible Database**: Uses a simple, text-based repository system to define application metadata and included executables.
+For each container URI or local image, `container-mod` can generate:
 
----
+- A `.sif` image, unless you point it at an existing local image
+- A modulefile such as `app/version.lua` for Lmod or `app/version` for Tcl
+- Wrapper scripts such as `app/version/bin/<program>`
+- An optional Jupyter kernel entry
+
+The wrappers let users run containerized commands as ordinary shell commands
+after loading the module.
 
 ## How It Works
 
-`container-mod` relies on a simple database located in the `repos/` directory. Each application has a corresponding text file containing three required fields:
+`container-mod` uses the text files in [`repos/`](/Users/yucheng/Documents/GitHub/container-mod/repos) as its application metadata database. Each app file defines:
 
-1.  **`Description`**: A summary of the application's purpose.
-2.  **`Home Page`**: The URL for the application's official website or source code.
-3.  **`Programs`**: A comma-separated list of the command-line executables provided by the application. The script uses this list to generate the wrapper scripts.
+- `Description`: short help text shown in the modulefile
+- `Home Page`: upstream project URL
+- `Programs`: comma-separated executables to wrap
 
-An optional `version` field can also be added to track the specific URIs of pulled containers for better reproducibility.
+Optional `version(...)` lines can be added to record the source URI for
+specific versions.
 
-**Example `repos/bowtie2` file:**
+Example app metadata:
 
-```
+```text
 Description: Bowtie 2 is an ultrafast and memory-efficient tool for aligning sequencing reads to long reference sequences.
-Home Page: [https://github.com/BenLangmead/bowtie2](https://github.com/BenLangmead/bowtie2)
+Home Page: https://github.com/BenLangmead/bowtie2
 Programs: bowtie2,bowtie2-build,bowtie2-inspect
 
 version("2.5.4", uri="docker://quay.io/biocontainers/bowtie2:2.5.4--h7071971_4")
 version("2.5.1", uri="docker://quay.io/biocontainers/bowtie2:2.5.1--py310h8d7afc0_0")
 ```
 
----
+If an app is missing from `repos/`, the script will prompt for the description,
+homepage, and program list and create a new entry.
 
-## Prerequisites
+## Requirements
 
-- **Container Runtime**: Requires **Singularity** or **Apptainer** to be installed and available in your environment.
-- **Module System**: The **Lmod** environment module system is required for modulefile generation and usage.
+- Bash
+  The script is compatible with the macOS system Bash and newer GNU Bash.
+- A container runtime
+  `singularity` or `apptainer` must be available directly or loadable through `module load`.
+- Lmod
+  Required when generating Lua modulefiles.
+- Tcl Environment Modules
+  Required when generating Tcl modulefiles.
+- Standard Unix tools
+  `sed`, `awk`, `grep`, `find`, `mktemp`, and `realpath`.
+- For `-j/--jupyter`
+  The container must include `python` and `ipykernel`.
 
----
+## Repository Layout
+
+- [`container-mod`](/Users/yucheng/Documents/GitHub/container-mod/container-mod): main script
+- [`repos/`](/Users/yucheng/Documents/GitHub/container-mod/repos): app metadata and executable lists
+- [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles): cluster-specific output locations
+- [`templates/module_template.lua`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.lua): base Lmod template
+- [`templates/module_template.tcl`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.tcl): base Tcl template
+- [`jupyter_kernel.json`](/Users/yucheng/Documents/GitHub/container-mod/jupyter_kernel.json): Jupyter kernel template
+
+## Profiles
+
+Profiles define shared output locations for images, wrappers, and modules. This
+repo currently includes:
+
+- `biocontainers`
+- `biocontainers_rocky9`
+- `ngc`
+- `ngc_rocky9`
+- `course_jupyter`
+- `gis`
+
+The profile files live in [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles) and typically define:
+
+- `MOD_EXISTING_DIR_DEF`
+- `PUBLIC_IMAGEDIR`
+- `PUBLIC_EXECUTABLE_DIR`
+
+You can also create personal profile overrides in `~/container-apps/profiles`.
 
 ## Usage
 
-### Subcommands
-
-The script operates using one of four primary subcommands:
-
-- `pull <URI>`: Downloads the container image.
-- `module <URI>`: Generates the Lmod modulefile.
-- `exec <URI>`: Creates the executable wrapper scripts.
-- `pipe <URI>`: The recommended command. Executes `pull`, `module`, and `exec` sequentially.
-
-### Options
-
-| Option                | Description                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `-d, --dir DIR`       | Specifies a custom base output directory for all generated files.                                                |
-| `-f, --force`         | Forces an overwrite of any existing files (images, modules, wrappers).                                           |
-| `-m, --moduledir DIR` | Specifies a directory of existing modulefiles to use as templates.                                               |
-| `-u, --update`        | Updates the application's file in the `repos` database with the new version information.                         |
-| `-p, --personal`      | Runs in personal mode, creating all files in the user's home directory (`~/container-apps`, `~/privatemodules`). |
-| `--profile <NAME>`    | Uses a specific configuration profile for setting default paths and variables.                                   |
-| `-j, --jupyter`       | Generates a Jupyter kernel from the container, requires `ipykernel` to be installed inside.                      |
-| `-h, --help`          | Displays the help message.                                                                                       |
-
----
-
-## Examples & Workflows
-
-### Standard Workflow (`pipe`)
-
-The `pipe` command is the easiest way to process a container. This example pulls the `vcftools` image, creates a module, and generates the wrappers.
-
 ```bash
-$ container-mod pipe docker://quay.io/biocontainers/vcftools:0.1.16--h9a82719_5
+container-mod <subcommand> [options] <URI-or-image> [...]
 ```
 
-### Personal Mode Workflow
+Subcommands:
 
-For individual use, the `-p` flag stores all files locally in your home directory.
+- `pull`: pull a remote image into the configured image directory
+- `module`: generate the modulefile
+- `exec`: generate wrapper scripts
+- `pipe`: run `pull`, `module`, and `exec` in sequence
+
+Options:
+
+- `-d, --dir DIR`: base output directory for generated public artifacts
+- `-f, --force`: overwrite existing generated files
+- `-m, --module-dir DIR`: search this directory for existing modulefiles to repurpose
+- `-s, --module-system SYS`: choose `lmod` or `tcl`
+- `-u, --update`: prepend a `version(...)` entry to the app metadata file
+- `-p, --personal`: write into personal directories under `~/container-apps` and `~/privatemodules`
+- `-t, --tcl`: shortcut for `--module-system tcl`
+- `--profile NAME`: load a named profile from [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles) or `~/container-apps/profiles`
+- `-j, --jupyter`: create a Jupyter kernel after the main workflow completes
+- `-h, --help`: show built-in help
+- `-l, --list`: list available profiles
+
+If you do not pass `--profile`, the script defaults to personal mode. If you do
+not pass `--module-system`, the script generates Lmod modulefiles.
+
+## Output Locations
+
+Personal mode writes to:
+
+- `~/container-apps/images`
+- `~/container-apps/tools`
+- `~/container-apps/repos`
+- `~/privatemodules`
+- `~/.local/share/jupyter/kernels` for Jupyter kernels
+
+Profile-backed or shared mode writes to:
+
+- Images: `PUBLIC_IMAGEDIR`
+- Wrappers: `PUBLIC_EXECUTABLE_DIR`
+- Existing-module lookup: `MOD_EXISTING_DIR_DEF` or `-m`
+- New modulefiles: `<OUTDIR>/incomplete`
+- New wrappers when not using personal mode: `<OUTDIR>/executables`
+- New Jupyter kernels when not using personal mode: `<OUTDIR>/kernels`
+
+The default `OUTDIR` is the current directory.
+
+## Common Workflows
+
+Pull an image and generate both the module and wrappers:
 
 ```bash
-# 1. Process the container in personal mode
-$ container-mod pipe -p docker://staphb/bowtie2:2.5.4
-
-# 2. Load your personal module environment and the new module
-$ module load use.own
-$ module load bowtie2/2.5.4
-
-# 3. Run the containerized command as if it were native
-$ bowtie2 --help
+./container-mod pipe --profile biocontainers \
+  docker://quay.io/biocontainers/vcftools:0.1.16--h9a82719_5
 ```
 
-### Working with Local Image Files
-
-If you already have a container image file (`.sif`), you can generate modules and wrappers for it directly, skipping the download. The script will prompt you for the application name and version.
+Create a personal module from a public Docker image:
 
 ```bash
-$ container-mod pipe /path/to/my/image.sif
+./container-mod pipe -p docker://staphb/bowtie2:2.5.4
+module load use.own
+module load bowtie2/2.5.4
+bowtie2 --help
 ```
 
-> **Note:** When using a local file, the original image is **not** moved or copied. The generated scripts will point to its original location.
-
-### Creating a Jupyter Kernel
-
-Use the `-j` flag to generate a Jupyter kernel, which will then be available to select in Jupyter Lab or Notebook.
+Generate a Tcl modulefile instead of the default Lua modulefile:
 
 ```bash
-$ container-mod pipe -p -j docker://tensorflow/tensorflow:2.18.0-jupyter
+./container-mod module --module-system tcl -p docker://staphb/bowtie2:2.5.4
+module load bowtie2/2.5.4
 ```
-## 📊 Project Insights
 
-See [GitHub Insights](../../graphs/contributors) for commit stats and contributors.
+Generate artifacts from a local image without re-pulling:
+
+```bash
+./container-mod pipe -p /path/to/my/image.sif
+```
+
+Register a new version in the repo metadata while pulling:
+
+```bash
+./container-mod pull --profile biocontainers -u \
+  docker://quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0
+```
+
+Create a Jupyter kernel after generating wrappers:
+
+```bash
+./container-mod pipe -p -j docker://tensorflow/tensorflow:2.18.0-jupyter
+```
+
+List available profiles:
+
+```bash
+./container-mod --list
+```
+
+## Local Image Behavior
+
+When the input is an existing local `.sif` file:
+
+- The image is not copied or moved
+- The script prompts for app name and version
+- Generated wrappers point back to the original image path
+
+This is useful for one-off local workflows and testing custom images.
+
+## Module Generation Behavior
+
+When generating an Lmod modulefile, the script first looks for the newest
+existing modulefile for the same app in the configured module search path. If
+one is found, it repurposes that file for the new version. Otherwise, it
+renders a new modulefile from
+[`templates/module_template.lua`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.lua).
+
+When generating a Tcl modulefile, the script renders a fresh modulefile from
+[`templates/module_template.tcl`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.tcl).
+
+The generated modulefile:
+
+- advertises description, homepage, and registry info
+- prepends the generated wrapper directory to `PATH`
+- uses the syntax of the selected module system
+
+## Wrapper Generation Behavior
+
+The `Programs:` field in each app metadata file controls wrapper generation.
+For each listed executable, the script:
+
+1. Checks whether the command exists inside the container
+2. Creates a wrapper under `app/version/bin/`
+3. Executes the command through `singularity exec` or `apptainer exec`
+4. Adds `--nv` or `--rocm` automatically when GPUs are detected
+
+Commands listed in `Programs:` but not found in the container are skipped with a
+warning.
+
+## Jupyter Support
+
+With `-j/--jupyter`, `container-mod` creates a kernel entry named
+`<app>-<version>`.
+
+The container must contain:
+
+- `python`
+- `ipykernel`
+
+If `ipykernel` is missing, kernel generation stops and the script prints a
+remediation hint.
+
+## Notes and Limitations
+
+- The quality of generated wrappers depends on the accuracy of the `Programs:`
+  field in the app metadata file.
+- Some URIs use custom name mapping in the script, for example `qiime2`,
+  `parabricks`, and `nsightsys`.
+- `--update` modifies the matching app metadata file by inserting a new
+  `version(...)` line for the pulled image.
+- The script creates new app metadata interactively when an app is not already
+  present in the repo database.
+
+## Development
+
+Basic validation:
+
+```bash
+bash -n container-mod
+./container-mod --help
+```
+
+If you change module generation behavior, also review
+[`templates/module_template.lua`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.lua)
+and
+[`templates/module_template.tcl`](/Users/yucheng/Documents/GitHub/container-mod/templates/module_template.tcl)
+and the profile files in
+[`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles).
