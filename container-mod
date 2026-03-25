@@ -1112,7 +1112,7 @@ detect_container_runtime || exit 1
 shift # Move past the subcommand
 
 declare -a ARGV
-while [[ -n "$1" ]];
+while (($#));
 do
     case $1 in
         --profile) shift; PROFILE="$1" ;;
