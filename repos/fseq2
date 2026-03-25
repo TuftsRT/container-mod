@@ -1,0 +1,5 @@
+Description: F-Seq2: improving the feature density based peak caller with dynamic statistics.
+Home Page: https://github.com/Boyle-Lab/F-Seq2
+Programs: fseq2
+
+version("2.0.4", uri="docker://tuftsttsrt/fseq2:2.0.4")

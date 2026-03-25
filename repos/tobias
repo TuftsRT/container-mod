@@ -2,4 +2,5 @@ Description: Tobias is a collection of command-line bioinformatics tools for per
 Home Page: https://github.com/loosolab/TOBIAS
 Programs: TOBIAS
 
+version("0.17.1", uri="docker://quay.io/biocontainers/tobias:0.17.1--py39hff726c5_1")
 version("0.13.3", uri="docker://quay.io/biocontainers/tobias:0.13.3--py37h37892f8_0")

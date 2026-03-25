@@ -46,8 +46,8 @@ conflict(myModuleName())
 
 local modroot="${EXECUTABLE_DIR}/${APP}/" .. "${VERSION}"
 prepend_path("PATH", modroot.."/bin", ":")
-
+prepend_path{"APPTAINER_BIND","/cluster/tufts",delim=","}
 -- Dependency
---depends_on("apptainer")
+depends_on("singularity")
 
 -- Additional commands or environment variables, if any

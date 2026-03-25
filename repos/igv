@@ -1,7 +1,4 @@
 Description: IGV is a high-performance, easy-to-use, interactive tool for the visual exploration of genomic data.
 Home Page: http://www.broadinstitute.org/software/igv/home
-Programs: igv_hidpi.sh,igv.sh,igvtools
+Programs: igv
 
-version("2.17.3", uri="")
-version("2.12.3", uri="")
-version("2.11.9", uri="")

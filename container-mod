@@ -773,12 +773,12 @@ PROGRAM="$command"
 IMAGE_DIR="$image_dir"
 IMAGE="$image_name"
 
-# Load Singularity if it is not already loaded
+# Load singularity if it is not already loaded
 if ! command -v singularity &> /dev/null; then
-    module load singularity || { echo "Failed to load Singularity module"; exit 1; }
+    module load singularity || { echo "Failed to load singularity module"; exit 1; }
 fi
 
-# Determine GPU flags for Singularity
+# Determine GPU flags for singularity
 OPTIONS=""
 if nvidia-smi -L &> /dev/null;
 then

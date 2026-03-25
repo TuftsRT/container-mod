@@ -1,0 +1,3 @@
+Description: Python is a programming language that lets you work quickly and integrate systems more effectively. We pre-installed components required for Nvidia GPU in the module. 
+Home Page: https://www.python.org
+Programs: pip,pip3,python,python3

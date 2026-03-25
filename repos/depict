@@ -1,0 +1,5 @@
+Description: DEPICT is an integrative tool that employs predicted gene functions to systematically prioritize the most likely causal genes at associated loci, highlight enriched pathways and identify tissues/cell types where genes from associated loci are highly expressed.
+Home Page: https://github.com/perslab/depict?tab=readme-ov-file
+Programs: depict.py
+
+version("py2", uri="docker://avanhilten/depict:py2")
