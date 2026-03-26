@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-# container-mod v0.1.5
+# container-mod v1.0.0
 #
 # Copyright (c) 2024 Tufts University
 # Author: Yucheng Zhang
@@ -18,7 +18,7 @@ set -uo pipefail
 # It assumes that Singularity or Apptainer is installed and available.
 
 # --- Script Configuration ---
-VERSION="0.1.5"
+VERSION="1.0.0"
 PROGNAME="$(basename "$0")"
 E_OK=0
 CONTAINER_RUNTIME=""
