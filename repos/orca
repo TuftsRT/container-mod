@@ -1,0 +1,3 @@
+Description: ORCA is an ab initio quantum chemistry program package containing modern electronic structure methods including DFT, semi-empirical, single- and multi-reference correlation methods, and tools for spectroscopy.
+Home Page: https://www.faccts.de/orca
+Programs: orca,orca_2mkl,orca_plot,orca_vib

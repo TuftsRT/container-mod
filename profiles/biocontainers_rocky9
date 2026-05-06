@@ -1,3 +1,4 @@
 MOD_EXISTING_DIR_DEF="/cluster/tufts/apps/container/biocontainers/modules"  # Directory to store ready-to-use modulefiles
 PUBLIC_IMAGEDIR="/cluster/tufts/apps/container/biocontainers/images"
 PUBLIC_EXECUTABLE_DIR="/cluster/tufts/apps/container/biocontainers/tools"
+BIND_PATH="/cluster/tufts"

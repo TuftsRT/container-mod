@@ -1,0 +1,3 @@
+Description: OpenMM is a high-performance toolkit for molecular simulation, usable as a library or as an application with a Python scripting interface, with custom CUDA, OpenCL, and HIP kernels for GPU acceleration.
+Home Page: https://openmm.org
+Programs: python,python3

@@ -1,0 +1,3 @@
+Description: SALOME is an open-source platform for pre- and post-processing for numerical simulation, providing CAD modeling, meshing, post-processing, and a generic platform for code coupling.
+Home Page: https://www.salome-platform.org
+Programs: salome,runSalome,killSalome

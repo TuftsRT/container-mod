@@ -1,0 +1,3 @@
+Description: MFEM is a modular parallel C++ library for finite element methods, featuring high-order finite elements, support for unstructured meshes, and scalable parallel algorithms for high-performance computing.
+Home Page: https://mfem.org
+Programs: cmake,ctest,make

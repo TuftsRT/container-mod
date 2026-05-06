@@ -1,0 +1,3 @@
+Description: ParaView is an open-source, multi-platform data analysis and visualization application designed for use on parallel HPC systems, used to analyze extremely large datasets using distributed memory computing resources.
+Home Page: https://www.paraview.org
+Programs: paraview,pvbatch,pvpython,pvserver,pvdataserver,pvrenderserver

@@ -1,0 +1,3 @@
+Description: MPAS (Model for Prediction Across Scales) is a collaborative project for developing atmosphere, ocean, and other earth-system simulation components for use in climate, regional climate, and weather studies.
+Home Page: https://mpas-dev.github.io
+Programs: atmosphere_model,init_atmosphere_model,ocean_model

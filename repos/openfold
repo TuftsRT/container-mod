@@ -1,0 +1,3 @@
+Description: OpenFold is an open-source, faithful PyTorch reproduction of DeepMind's AlphaFold 2, providing trainable code and weights for protein structure prediction and a foundation for downstream research.
+Home Page: https://github.com/aqlaboratory/openfold
+Programs: python,python3,run_pretrained_openfold.py

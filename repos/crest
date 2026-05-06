@@ -1,0 +1,3 @@
+Description: CREST is a conformer-rotamer ensemble sampling tool based on the xtb tight-binding methods, providing automated workflows for sampling chemical conformational space and computing thermodynamic properties.
+Home Page: https://github.com/crest-lab/crest
+Programs: crest

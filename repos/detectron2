@@ -1,0 +1,3 @@
+Description: Detectron2 is Facebook AI Research's next generation library that provides state-of-the-art detection and segmentation algorithms, supporting tasks such as object detection, instance segmentation, panoptic segmentation, and pose estimation.
+Home Page: https://github.com/facebookresearch/detectron2
+Programs: python,python3,pip,pip3

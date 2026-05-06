@@ -1,0 +1,3 @@
+Description: ESMF (Earth System Modeling Framework) is open-source software for building modeling applications and components in the geosciences, with grid remapping, time management, parallel I/O, and a component coupling layer.
+Home Page: https://earthsystemmodeling.org
+Programs: ESMF_Info,ESMF_Regrid,ESMF_RegridWeightGen,ESMF_PrintInfo

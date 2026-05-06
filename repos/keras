@@ -1,0 +1,3 @@
+Description: Keras is a high-level deep learning API that runs on top of TensorFlow, JAX, and PyTorch, designed to enable fast experimentation with deep neural networks while remaining flexible for research.
+Home Page: https://keras.io
+Programs: python,python3,pip,pip3

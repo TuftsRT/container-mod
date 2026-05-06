@@ -1,0 +1,3 @@
+Description: FFmpeg is a complete, cross-platform solution to record, convert, and stream audio and video, comprising a suite of libraries and command-line programs for handling multimedia files and streams.
+Home Page: https://ffmpeg.org
+Programs: ffmpeg,ffprobe,ffplay

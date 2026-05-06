@@ -1,0 +1,3 @@
+Description: XGBoost is an optimized distributed gradient boosting library designed to be highly efficient, flexible, and portable, providing parallel tree boosting that solves many data science problems in a fast and accurate way.
+Home Page: https://xgboost.readthedocs.io
+Programs: xgboost,python,python3

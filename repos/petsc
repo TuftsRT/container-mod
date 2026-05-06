@@ -1,0 +1,3 @@
+Description: PETSc, the Portable, Extensible Toolkit for Scientific Computation, is a suite of data structures and routines for the scalable solution of scientific applications modeled by partial differential equations on parallel HPC systems.
+Home Page: https://petsc.org
+Programs: python,python3

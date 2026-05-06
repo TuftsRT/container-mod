@@ -1,0 +1,3 @@
+Description: SU2 is an open-source collection of C++/Python tools for performing partial differential equation analysis and solving PDE-constrained optimization problems, with a particular focus on multiphysics CFD problems.
+Home Page: https://su2code.github.io
+Programs: SU2_CFD,SU2_DOT,SU2_DEF,SU2_GEO,SU2_MSH,SU2_SOL,parallel_computation.py

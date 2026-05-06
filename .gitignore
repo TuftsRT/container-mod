@@ -1,0 +1,11 @@
+# macOS clutter
+.DS_Store
+**/.DS_Store
+
+# Stale staging dirs left behind from previous repo reorganizations
+/.docs_stale/
+
+# Common editor / build artifacts
+*.swp
+*.swo
+*~

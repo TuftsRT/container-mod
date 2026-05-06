@@ -1,0 +1,3 @@
+Description: Transformers is a Hugging Face library that provides thousands of pretrained models for natural language processing, computer vision, audio, and multimodal tasks, with a unified API for inference and fine-tuning.
+Home Page: https://huggingface.co/docs/transformers
+Programs: python,python3,pip,pip3,transformers-cli

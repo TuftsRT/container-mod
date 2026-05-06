@@ -46,7 +46,7 @@ conflict(myModuleName())
 
 local modroot="${EXECUTABLE_DIR}/${APP}/" .. "${VERSION}"
 prepend_path("PATH", modroot.."/bin", ":")
-prepend_path{"APPTAINER_BIND","/cluster/tufts",delim=","}
+${BIND_LUA}
 -- Dependency
 depends_on("${RUNTIME_MODULE}")
 

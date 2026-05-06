@@ -1,0 +1,3 @@
+Description: PLUMED is a community-developed library that provides a wide range of methods for enhanced sampling and free-energy calculation in molecular dynamics simulations, working as a plug-in for codes such as GROMACS, LAMMPS, NAMD, and AMBER.
+Home Page: https://www.plumed.org
+Programs: plumed

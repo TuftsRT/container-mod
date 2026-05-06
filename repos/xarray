@@ -1,0 +1,3 @@
+Description: xarray is an open-source project and Python package that introduces labels in the form of dimensions, coordinates, and attributes on top of raw NumPy-like multidimensional arrays, providing a powerful and concise interface for scientific data analysis.
+Home Page: https://xarray.dev
+Programs: python,python3,pip,pip3

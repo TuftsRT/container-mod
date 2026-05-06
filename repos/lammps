@@ -1,0 +1,3 @@
+Description: LAMMPS is a classical molecular dynamics code with a focus on materials modeling. It models ensembles of particles in a liquid, solid, or gaseous state and can simulate atomic, polymeric, biological, solid-state, granular, and coarse-grained systems using a variety of force fields and boundary conditions.
+Home Page: https://www.lammps.org
+Programs: lmp,lmp_mpi,lmp_serial

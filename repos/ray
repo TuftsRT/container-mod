@@ -1,0 +1,3 @@
+Description: Ray is an open-source unified framework for scaling AI and Python applications, providing the compute layer for distributed training, hyperparameter tuning, reinforcement learning, model serving, and large-scale data processing.
+Home Page: https://www.ray.io
+Programs: ray,python,python3

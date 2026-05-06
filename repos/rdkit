@@ -1,0 +1,3 @@
+Description: RDKit is an open-source toolkit for cheminformatics, with implementations of common 2D and 3D molecular operations, descriptor generation, fingerprinting, substructure searching, and machine-learning helpers, accessible from Python and C++.
+Home Page: https://www.rdkit.org
+Programs: python,python3

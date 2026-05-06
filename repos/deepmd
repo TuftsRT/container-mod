@@ -1,0 +1,3 @@
+Description: DeePMD-kit is a package designed to minimize the effort required to build deep learning-based models of interatomic potential energy and force field, generating training data for and using such potentials to perform molecular dynamics.
+Home Page: https://docs.deepmodeling.com/projects/deepmd
+Programs: dp,lmp,python,python3

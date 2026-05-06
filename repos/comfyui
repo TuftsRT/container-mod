@@ -1,0 +1,3 @@
+Description: ComfyUI is a node-based graphical user interface for Stable Diffusion and other diffusion models, providing fine-grained control over image generation pipelines through a visual workflow editor.
+Home Page: https://github.com/comfyanonymous/ComfyUI
+Programs: python,python3,comfyui

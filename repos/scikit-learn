@@ -1,0 +1,3 @@
+Description: scikit-learn is a Python machine learning library that features various classification, regression, and clustering algorithms including support vector machines, random forests, gradient boosting, k-means, and DBSCAN, and is designed to interoperate with NumPy and SciPy.
+Home Page: https://scikit-learn.org
+Programs: python,python3,pip,pip3

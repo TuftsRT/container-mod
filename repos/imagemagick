@@ -1,0 +1,3 @@
+Description: ImageMagick is a free, open-source software suite used for editing and manipulating digital images, with the ability to create, edit, compose, or convert bitmap images in over 200 formats.
+Home Page: https://imagemagick.org
+Programs: magick,convert,identify,mogrify,composite,montage,compare,display

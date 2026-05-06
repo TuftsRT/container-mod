@@ -1,0 +1,3 @@
+Description: WRF (Weather Research and Forecasting model) is a state-of-the-art mesoscale numerical weather prediction system designed for both atmospheric research and operational forecasting applications, supporting a wide range of meteorological scales from meters to thousands of kilometers.
+Home Page: https://www.mmm.ucar.edu/models/wrf
+Programs: wrf.exe,real.exe,ndown.exe,tc.exe

@@ -1,0 +1,3 @@
+Description: CDO (Climate Data Operators) is a collection of command-line operators to manipulate and analyze climate and NWP model data in NetCDF, GRIB, and EXTRA formats, with hundreds of operators covering statistics, regridding, format conversion, and more.
+Home Page: https://code.mpimet.mpg.de/projects/cdo
+Programs: cdo

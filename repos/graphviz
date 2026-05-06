@@ -1,0 +1,3 @@
+Description: Graphviz is open-source graph visualization software with a number of layout programs that take graph descriptions in the DOT language and produce diagrams in many formats.
+Home Page: https://graphviz.org
+Programs: dot,neato,fdp,sfdp,twopi,circo,gvgen,gvmap,gvpr,acyclic

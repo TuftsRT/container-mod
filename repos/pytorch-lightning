@@ -1,0 +1,3 @@
+Description: PyTorch Lightning is a lightweight wrapper for PyTorch that organizes PyTorch code to decouple the science from the engineering, making it easier to train, scale, and reproduce deep learning models.
+Home Page: https://lightning.ai/docs/pytorch/stable
+Programs: python,python3,pip,pip3

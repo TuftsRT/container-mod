@@ -1,0 +1,3 @@
+Description: Singularity / Apptainer command-line utilities for building, signing, and inspecting container images, exposed inside the container itself for nested workflows.
+Home Page: https://apptainer.org
+Programs: apptainer,singularity
