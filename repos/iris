@@ -1,0 +1,3 @@
+Description: Iris is a powerful, format-agnostic, community-driven Python library for analyzing and visualizing Earth science data, with a focus on multi-dimensional gridded data and CF-compliant netCDF.
+Home Page: https://scitools-iris.readthedocs.io
+Programs: python,python3,pip,pip3

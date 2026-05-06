@@ -1,0 +1,3 @@
+Description: NCO (NetCDF Operators) is a suite of programs known as operators that manipulate netCDF files at the command line, supporting subsetting, hyperslabbing, averaging, concatenating, and arithmetic operations.
+Home Page: https://nco.sourceforge.net
+Programs: ncks,ncrcat,ncatted,ncpdq,ncwa,ncrename,ncea,ncbo,ncflint,ncdump

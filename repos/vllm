@@ -1,0 +1,3 @@
+Description: vLLM is a fast and easy-to-use library for large language model inference and serving, featuring PagedAttention, continuous batching, optimized CUDA kernels, and support for many quantization formats.
+Home Page: https://docs.vllm.ai
+Programs: vllm,python,python3

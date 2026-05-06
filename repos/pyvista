@@ -1,0 +1,3 @@
+Description: PyVista is a 3D plotting and mesh analysis library for Python through a streamlined interface to the Visualization Toolkit (VTK), supporting publication-quality renderings, interactive widgets, and Jupyter integration.
+Home Page: https://pyvista.org
+Programs: python,python3,pip,pip3

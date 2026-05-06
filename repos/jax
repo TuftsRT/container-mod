@@ -1,0 +1,3 @@
+Description: JAX is a Python library for accelerator-oriented array computation and program transformation, designed for high-performance numerical computing and large-scale machine learning, providing NumPy-like APIs with automatic differentiation, JIT compilation, and parallelization on CPU, GPU, and TPU.
+Home Page: https://jax.readthedocs.io
+Programs: python,python3,pip,pip3

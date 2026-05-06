@@ -1,0 +1,3 @@
+Description: NCL (NCAR Command Language) is an interpreted programming language designed specifically for scientific data processing and visualization, with built-in support for analysis of climate, weather, and oceanographic data.
+Home Page: https://www.ncl.ucar.edu
+Programs: ncl,ng4ex,ngmath,ncl_filedump,ncl_convert2nc,wrapit

@@ -1,0 +1,3 @@
+Description: DeepSpeed is a deep learning optimization library by Microsoft that makes distributed training easy, efficient, and effective, with system optimizations and innovations to enable training of models with hundreds of billions of parameters.
+Home Page: https://www.deepspeed.ai
+Programs: deepspeed,python,python3

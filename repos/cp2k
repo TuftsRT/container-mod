@@ -1,0 +1,3 @@
+Description: CP2K is a quantum chemistry and solid state physics software package that performs atomistic simulations of solid state, liquid, molecular, periodic, material, crystal, and biological systems using density functional theory, Hartree-Fock, and a variety of post-HF methods.
+Home Page: https://www.cp2k.org
+Programs: cp2k.psmp,cp2k.popt,cp2k.ssmp,cp2k.sopt,cp2k_shell.psmp

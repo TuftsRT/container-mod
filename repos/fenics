@@ -1,0 +1,3 @@
+Description: FEniCS is a popular open-source computing platform for solving partial differential equations using the finite element method, with a high-level Python and C++ interface for the rapid implementation of mathematical models.
+Home Page: https://fenicsproject.org
+Programs: python,python3,pip,pip3

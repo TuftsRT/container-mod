@@ -1,0 +1,3 @@
+Description: ESMFold is a protein structure prediction model based on the ESM-2 protein language model, providing fast structure prediction from a single amino acid sequence without multiple sequence alignment.
+Home Page: https://github.com/facebookresearch/esm
+Programs: esm-fold,python,python3

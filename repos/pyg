@@ -1,0 +1,3 @@
+Description: PyTorch Geometric (PyG) is a library built upon PyTorch to easily write and train graph neural networks for a wide range of applications related to structured data, with a unified API and many GNN benchmarks.
+Home Page: https://pytorch-geometric.readthedocs.io
+Programs: python,python3,pip,pip3

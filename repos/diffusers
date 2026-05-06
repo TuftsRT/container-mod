@@ -1,0 +1,3 @@
+Description: Diffusers is a Hugging Face library for state-of-the-art pretrained diffusion models for generating images, audio, and even 3D structures of molecules, with a modular toolbox for training and using diffusion models.
+Home Page: https://huggingface.co/docs/diffusers
+Programs: python,python3,pip,pip3

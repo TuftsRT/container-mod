@@ -1,0 +1,3 @@
+Description: SimpleITK is a simplified, open-source interface to the Insight Toolkit (ITK), supporting image analysis in C++, Python, R, Java, C#, Lua, Ruby, and Tcl, optimized for ease of use without sacrificing power.
+Home Page: https://simpleitk.org
+Programs: python,python3,pip,pip3

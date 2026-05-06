@@ -1,0 +1,3 @@
+Description: code_aster is a free, open-source finite element solver for thermo-mechanical analysis, including linear and nonlinear analysis, fracture mechanics, contact, fluid-structure interaction, and dynamic analysis.
+Home Page: https://www.code-aster.org
+Programs: as_run,astk,run_aster

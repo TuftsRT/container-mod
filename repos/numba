@@ -1,0 +1,3 @@
+Description: Numba is an open-source JIT compiler that translates a subset of Python and NumPy code into fast machine code at runtime using LLVM, enabling speedups for numerical Python code without changing language.
+Home Page: https://numba.pydata.org
+Programs: numba,python,python3

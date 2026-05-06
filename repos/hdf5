@@ -1,0 +1,3 @@
+Description: HDF5 is a data model, library, and file format for storing and managing data, supporting an unlimited variety of data types and designed for flexible and efficient I/O on high-volume and complex data on parallel HPC systems.
+Home Page: https://www.hdfgroup.org/solutions/hdf5
+Programs: h5dump,h5ls,h5diff,h5repack,h5stat,h5copy,h5import,h5cc,h5pcc,h5fc,h5pfc

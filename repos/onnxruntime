@@ -1,0 +1,3 @@
+Description: ONNX Runtime is a cross-platform inference and training accelerator for machine learning models in the ONNX format, with optimized execution providers for CPU, CUDA, TensorRT, ROCm, and others.
+Home Page: https://onnxruntime.ai
+Programs: python,python3,pip,pip3,onnxruntime_perf_test

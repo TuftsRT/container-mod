@@ -1,0 +1,3 @@
+Description: DGL (Deep Graph Library) is an easy-to-use, high-performance, and scalable Python package for deep learning on graphs, providing message-passing primitives and many state-of-the-art graph neural network models.
+Home Page: https://www.dgl.ai
+Programs: python,python3,pip,pip3

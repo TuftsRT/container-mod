@@ -1,0 +1,3 @@
+Description: Horovod is a distributed deep learning training framework for TensorFlow, Keras, PyTorch, and Apache MXNet, designed to make distributed training easy to use, fast, and accessible.
+Home Page: https://horovod.ai
+Programs: horovodrun,python,python3

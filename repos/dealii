@@ -1,0 +1,3 @@
+Description: deal.II is a C++ software library supporting the creation of finite element codes for partial differential equations, with extensive features for adaptive mesh refinement, multi-grid methods, and parallel computation.
+Home Page: https://www.dealii.org
+Programs: cmake,ctest,make

@@ -1,0 +1,3 @@
+Description: LightGBM is a gradient boosting framework that uses tree-based learning algorithms, designed to be distributed and efficient with faster training speed, lower memory usage, and better accuracy on large-scale data.
+Home Page: https://lightgbm.readthedocs.io
+Programs: lightgbm,python,python3

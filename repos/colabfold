@@ -1,0 +1,3 @@
+Description: ColabFold is an accelerated protein structure prediction toolkit that combines fast sequence searches via MMseqs2 with AlphaFold2 / AlphaFold-Multimer / RoseTTAFold for protein and complex structure prediction.
+Home Page: https://github.com/sokrypton/ColabFold
+Programs: colabfold_batch,colabfold_search,python,python3

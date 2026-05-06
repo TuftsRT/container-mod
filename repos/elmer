@@ -1,0 +1,3 @@
+Description: Elmer is an open-source multiphysical simulation software developed by CSC, including physical models of fluid dynamics, structural mechanics, electromagnetics, heat transfer, and acoustics.
+Home Page: https://www.elmerfem.org
+Programs: ElmerSolver,ElmerGrid,ElmerGUI,ElmerPost

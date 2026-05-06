@@ -1,0 +1,3 @@
+Description: Apache MXNet is a flexible and efficient deep learning framework that supports symbolic and imperative programming, distributed training, and a broad ecosystem of tools and language bindings.
+Home Page: https://mxnet.apache.org
+Programs: python,python3,pip,pip3

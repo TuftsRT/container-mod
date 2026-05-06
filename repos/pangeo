@@ -1,0 +1,3 @@
+Description: Pangeo is a community platform for big data geoscience that integrates Xarray, Dask, and Jupyter to enable scalable analysis of massive datasets in cloud and HPC environments.
+Home Page: https://pangeo.io
+Programs: python,python3,jupyter,jupyter-lab,dask-scheduler,dask-worker

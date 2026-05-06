@@ -1,0 +1,3 @@
+Description: AMBER is a suite of biomolecular simulation programs for molecular dynamics, including pmemd, sander, and a wide range of analysis and preparation tools, as well as the open-source AmberTools distribution.
+Home Page: https://ambermd.org
+Programs: pmemd,pmemd.cuda,pmemd.MPI,sander,sander.MPI,tleap,xleap,antechamber,parmchk2,cpptraj

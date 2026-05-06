@@ -1,0 +1,3 @@
+Description: OpenRadioss is an open-source explicit finite element analysis solver for transient dynamic problems, particularly suited to crash, impact, and short-duration events, with extensive material and contact models.
+Home Page: https://www.openradioss.org
+Programs: starter_linux64_gf,engine_linux64_gf,engine_linux64_gf_ompi

@@ -1,0 +1,3 @@
+Description: Dask is a flexible parallel computing library for analytic computing in Python, providing dynamic task scheduling and big-data collections (arrays, DataFrames, bags) that mirror NumPy, pandas, and lists for out-of-core and distributed computing.
+Home Page: https://www.dask.org
+Programs: dask,dask-scheduler,dask-worker,python,python3

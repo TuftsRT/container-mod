@@ -1,0 +1,3 @@
+Description: NAMD is a parallel molecular dynamics code designed for high-performance simulation of large biomolecular systems, scaling to hundreds of cores for typical simulations and beyond 500,000 cores for the largest simulations.
+Home Page: https://www.ks.uiuc.edu/Research/namd
+Programs: namd2,namd3,charmrun

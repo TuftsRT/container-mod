@@ -1,0 +1,3 @@
+Description: OpenFOAM is a free, open-source CFD software package that provides a wide range of solvers and utilities for computational fluid dynamics, multi-phase flow, electromagnetism, structural analysis, and more.
+Home Page: https://www.openfoam.com
+Programs: simpleFoam,pimpleFoam,icoFoam,interFoam,rhoCentralFoam,blockMesh,snappyHexMesh,decomposePar,reconstructPar,paraFoam

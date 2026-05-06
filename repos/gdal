@@ -1,0 +1,3 @@
+Description: GDAL is a translator library for raster and vector geospatial data formats, presenting a single raster abstract data model and single vector abstract data model to the calling application for all supported formats.
+Home Page: https://gdal.org
+Programs: gdalinfo,gdal_translate,gdalwarp,gdaladdo,gdalbuildvrt,ogr2ogr,ogrinfo,gdal2tiles.py

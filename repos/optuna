@@ -1,0 +1,3 @@
+Description: Optuna is an open-source automatic hyperparameter optimization framework, particularly designed for machine learning, featuring define-by-run programming style, efficient sampling and pruning algorithms, and easy parallelization.
+Home Page: https://optuna.org
+Programs: optuna,python,python3

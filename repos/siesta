@@ -1,0 +1,3 @@
+Description: SIESTA performs efficient electronic structure calculations and ab initio molecular dynamics simulations of molecules and solids based on density functional theory using norm-conserving pseudopotentials and numerical atomic orbitals as a basis set.
+Home Page: https://siesta-project.org
+Programs: siesta,transiesta,tbtrans
