@@ -55,7 +55,10 @@ detect_container_runtime() {
     #   3. singularity in PATH      (system binary)
     #   4. apptainer in PATH        (system binary)
     #   5. error
-    if command -v module &>/dev/null; then
+    # Make sure the `module` function is reachable from this subshell
+    # before we ask it about availability or loading.  Without this,
+    # Lmod's init-script-defined `module` function is invisible here.
+    if ensure_module_function && type module &>/dev/null; then
         if module_is_available "singularity"; then
             if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
                 CONTAINER_RUNTIME="singularity"
@@ -407,6 +410,42 @@ get_mode() {
     fi
 }
 
+# Lmod and Environment Modules define `module` as a shell function
+# in /etc/profile.d/*.sh, NOT as a regular executable.  Shell
+# functions are not inherited by child processes by default, so when
+# container-mod starts as a subprocess of an interactive login shell
+# the function is missing and every `module ...` invocation fails.
+# We re-source the well-known init scripts (or fall back to LMOD_CMD
+# directly) so the function is available inside the script.
+ensure_module_function() {
+    if type module &>/dev/null; then
+        return 0
+    fi
+    local init
+    for init in \
+        "${LMOD_PKG:-}/init/bash" \
+        "${MODULESHOME:-}/init/bash" \
+        /etc/profile.d/lmod.sh \
+        /etc/profile.d/z00_lmod.sh \
+        /etc/profile.d/00-modulepath.sh \
+        /etc/profile.d/modules.sh; do
+        [[ -z "$init" || ! -f "$init" ]] && continue
+        # shellcheck disable=SC1090
+        source "$init" 2>/dev/null
+        if type module &>/dev/null; then
+            return 0
+        fi
+    done
+    # Synthesize a `module` function that calls LMOD_CMD directly.
+    # LMOD_CMD is exported by Lmod's init script and IS inherited by
+    # subprocesses, so this works even when the function form isn't.
+    if [[ -n "${LMOD_CMD:-}" && -x "${LMOD_CMD:-}" ]]; then
+        module() { eval "$("$LMOD_CMD" bash "$@")"; }
+        return 0
+    fi
+    return 1
+}
+
 # Returns 0 if a Lmod / Environment Modules entry by the given name is
 # loadable on this system.  Used to decide whether the generated
 # modulefile should contain a `depends_on(...)` line.
@@ -430,7 +469,8 @@ get_mode() {
 module_is_available() {
     local mod="$1"
     [[ -z "$mod" ]] && return 1
-    if ! command -v module &>/dev/null; then
+    ensure_module_function || return 1
+    if ! type module &>/dev/null; then
         return 1
     fi
     # `module avail` writes its listing to stderr; redirect both.
@@ -627,7 +667,11 @@ uri2ver() {
 
 # Pulls a container image from a remote URI.
 # @param $1 - The remote container URI.
-pull() {
+#
+# Named `cmd_pull` (not `pull`) so it does not shadow any system
+# command of the same name.  Subcommand dispatch translates the
+# user-visible `pull` keyword into a call to `cmd_pull`.
+cmd_pull() {
     local uri=$1
     local is_local_file=0
     # If the URI is a local file, do nothing.
@@ -742,7 +786,13 @@ pull() {
 
 # Generates an Lmod modulefile for a container.
 # @param $1 - The container URI.
-module() {
+#
+# Named `cmd_module` (not `module`) so it does not shadow Lmod's /
+# Environment Modules' shell function of the same name - which would
+# break detect_container_runtime's `module avail` / `module load`
+# calls.  Subcommand dispatch translates the user-visible `module`
+# keyword into a call to `cmd_module`.
+cmd_module() {
     local URI="$1"
     local module_outdir
     if [[ $personal -eq 1 ]];
@@ -1009,7 +1059,11 @@ repurpose_old_modulefile() {
 
 # Generates executable wrapper scripts for programs inside a container.
 # @param $1 - The container URI.
-exec() {
+#
+# Named `cmd_exec` (not `exec`) so it does not shadow bash's `exec`
+# builtin.  Subcommand dispatch translates the user-visible `exec`
+# keyword into a call to `cmd_exec`.
+cmd_exec() {
     local uri="$1"
     local app; app=$(uri2app "$uri") || return 1
     local ver; ver=$(uri2ver "$uri") || return 1
@@ -1502,13 +1556,13 @@ fi
 
 # --- Main Subcommand Execution ---
 case "$SUBCOMMAND" in
-    pull)   handle_subcommand pull "$@" ;;
-    module) handle_subcommand module "$@" ;;
-    exec)   handle_subcommand exec "$@" ;;
+    pull)   handle_subcommand cmd_pull "$@" ;;
+    module) handle_subcommand cmd_module "$@" ;;
+    exec)   handle_subcommand cmd_exec "$@" ;;
     pipe)
-        handle_subcommand pull "$@"
-        handle_subcommand module "$@"
-        handle_subcommand exec "$@"
+        handle_subcommand cmd_pull "$@"
+        handle_subcommand cmd_module "$@"
+        handle_subcommand cmd_exec "$@"
         ;;
     *)
         warn -p "Invalid subcommand: $SUBCOMMAND"
