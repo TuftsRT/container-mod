@@ -50,8 +50,9 @@ homepage, and program list and create a new entry.
 
 ## Requirements
 
-- Bash
-  The script is compatible with the macOS system Bash and newer GNU Bash.
+- Bash 4 or newer
+  The script uses `mapfile`, which is unavailable in macOS's stock Bash 3.2.
+  On macOS, install GNU Bash via Homebrew (`brew install bash`).
 - A container runtime
   `singularity` or `apptainer` must be available directly or loadable through `module load`.
 - Lmod
@@ -59,7 +60,8 @@ homepage, and program list and create a new entry.
 - Tcl Environment Modules
   Required when generating Tcl modulefiles.
 - Standard Unix tools
-  `sed`, `awk`, `grep`, `find`, `mktemp`, and `realpath`.
+  `sed`, `awk`, `grep`, `find`, `mktemp`, `realpath`, `stat`. The script's
+  `sed` invocations use `-Ee` so they work on both GNU and BSD `sed`.
 - For `-j/--jupyter`
   The container must include `python` and `ipykernel`.
 
@@ -89,6 +91,7 @@ The profile files live in [`profiles/`](/Users/yucheng/Documents/GitHub/containe
 - `MOD_EXISTING_DIR_DEF`
 - `PUBLIC_IMAGEDIR`
 - `PUBLIC_EXECUTABLE_DIR`
+- `BIND_PATH` (optional)
 
 You can also create personal profile overrides in `~/container-apps/profiles`.
 
@@ -97,6 +100,10 @@ Profile variables map to runtime behavior like this:
 - `MOD_EXISTING_DIR_DEF`: existing shared module tree to search when reusing a prior modulefile
 - `PUBLIC_IMAGEDIR`: destination for pulled container images in profile-backed mode
 - `PUBLIC_EXECUTABLE_DIR`: shared wrapper root used when rendering new modulefiles
+- `BIND_PATH`: optional path to inject into `APPTAINER_BIND` from generated
+  modulefiles. Set this to a site-wide bind path such as `/cluster/tufts`
+  if your cluster requires every container to bind a shared filesystem.
+  When unset, no bind line is emitted and generated modules stay portable.
 
 When a profile is active, the script still writes newly generated modulefiles to
 `<OUTDIR>/incomplete` unless you are in personal mode. This lets you stage and
@@ -112,6 +119,8 @@ profile looks like:
 MOD_EXISTING_DIR_DEF="/cluster/example/modules"
 PUBLIC_IMAGEDIR="/cluster/example/images"
 PUBLIC_EXECUTABLE_DIR="/cluster/example/tools"
+# Optional: bind a site-wide filesystem into every container
+# BIND_PATH="/cluster/example"
 ```
 
 Then use it with:
@@ -158,8 +167,9 @@ Options:
 - `-t, --tcl`: shortcut for `--module-system tcl`
 - `--profile NAME`: load a named profile from [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles) or `~/container-apps/profiles`
 - `-j, --jupyter`: create a Jupyter kernel after the main workflow completes
-- `-h, --help`: show built-in help
 - `-l, --list`: list available profiles
+- `-v, --version`: print the script version and exit
+- `-h, --help`: show built-in help
 
 If you do not pass `--profile`, the script defaults to personal mode. If you do
 not pass `--module-system`, the script generates Lmod modulefiles.
@@ -260,20 +270,72 @@ The generated modulefile:
 
 - advertises description, homepage, and registry info
 - prepends the generated wrapper directory to `PATH`
+- optionally prepends `BIND_PATH` to `APPTAINER_BIND` if the active
+  profile defines it
 - uses the syntax of the selected module system
+
+The registry banner shown in the generated module's `whatis` lines is
+inferred from the URI:
+
+| URI host | Registry label | Catalog link |
+|---|---|---|
+| `quay.io/biocontainers/...` | BioContainers | `biocontainers.pro/tools/<app>` |
+| `nvcr.io/...` | NVIDIA NGC | `catalog.ngc.nvidia.com/orgs/<repo>` |
+| `ghcr.io/...` | GitHub Container Registry | `ghcr.io/<repo>` |
+| Any other `quay.io/...` | Quay.io | `quay.io/repository/<repo>` |
+| Anything else | DockerHub | `hub.docker.com/r/<repo>` |
 
 ## Wrapper Generation Behavior
 
 The `Programs:` field in each app metadata file controls wrapper generation.
 For each listed executable, the script:
 
-1. Checks whether the command exists inside the container
+1. Checks whether the command exists inside the container (uses
+   `sh -c "command -v ..."` so distroless images without `which` still work)
 2. Creates a wrapper under `app/version/bin/`
 3. Executes the command through `singularity exec` or `apptainer exec`
-4. Adds `--nv` or `--rocm` automatically when GPUs are detected
+4. Adds `--nv` when an NVIDIA GPU is detected, or `--rocm` when an AMD
+   GPU is detected (these flags are mutually exclusive; `--nv` wins on
+   mixed systems)
 
 Commands listed in `Programs:` but not found in the container are skipped with a
 warning.
+
+## Permission Model (Shared Admin Deployments)
+
+When deploying with a `--profile`, `container-mod` is intended to produce a
+tree where every cluster user can read+execute and only the deploying admin
+can write. This holds even when the admin's login shell uses a strict umask
+such as `0007` or `0077`.
+
+Concretely, after a successful run you should see:
+
+| Artifact | Mode |
+|---|---|
+| Image (`*.sif`) | `644` |
+| Modulefile (`*.lua` / `*.tcl`) | `644` |
+| Wrapper script | `755` |
+| App metadata file in `repos/` | `644` |
+| Every directory in the output tree | `755` |
+
+The script enforces this by:
+
+- setting `umask 022` near the top of the script so default-created files
+  land at `644` and directories at `755`, regardless of the calling shell's
+  umask;
+- explicitly `chmod`-ing each artifact after creation (image, modulefile,
+  wrappers, metadata files);
+- walking the parent chain after `mkdir -p` so intermediate directories
+  created with the umask default also become `755`;
+- running an automatic permission self-check at the end of every shared
+  `module` and `exec` run that prints a per-path warning for any file or
+  directory whose mode does not match the table above. The check is
+  skipped in personal mode where the user owns everything anyway.
+
+If the cluster expects collaborative-admin write access (multiple admins
+in a shared group both able to update modules without `sudo`), change the
+`umask 022` line to `umask 002` and update the verification thresholds
+to `775`/`664`.
 
 ## Jupyter Support
 
@@ -295,9 +357,16 @@ remediation hint.
 - Some URIs use custom name mapping in the script, for example `qiime2`,
   `parabricks`, and `nsightsys`.
 - `--update` modifies the matching app metadata file by inserting a new
-  `version(...)` line for the pulled image.
+  `version(...)` line for the pulled image. It is silently skipped for
+  local `.sif` files since there is no remote URI to record; the script
+  prints a one-line warning in that case.
 - The script creates new app metadata interactively when an app is not already
   present in the repo database.
+- `pull`, `module`, and `exec` are deliberately separate. Running `pull`
+  alone only downloads the `.sif`; use `pipe` to also generate the
+  modulefile and wrappers in one shot. `exec` requires the image to
+  already exist because it probes the container for which programs are
+  present before generating wrappers.
 
 ## Development
 

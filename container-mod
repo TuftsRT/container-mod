@@ -2,6 +2,16 @@
 
 set -uo pipefail
 
+# Force a permissive umask so default-created files end up 644 and
+# directories 755, regardless of the admin's shell umask.  Every
+# explicit chmod in the script reinforces this; the umask covers the
+# brief window between creation and the chmod, and any path we forget
+# to chmod (mktemp temp files, intermediate parents created by mkdir -p,
+# etc.).  Admins running with umask 077 would otherwise produce a tree
+# where users can read the leaf wrapper but cannot traverse the parent
+# directory to reach it.
+umask 022
+
 # container-mod v1.0.0
 #
 # Copyright (c) 2024 Tufts University
@@ -335,7 +345,16 @@ create_dir() {
 ensure_dir_access() {
     local dir_path="$1"
     mkdir -p "$dir_path" || return 1
-    chmod 755 "$dir_path"
+    # mkdir -p may have created several intermediate parents using the
+    # process umask; walk the chain so every newly-created directory is
+    # traversable by users (755).  We stop at $HOME or / so we never
+    # touch directories outside what container-mod owns.
+    local p="$dir_path"
+    while [[ -n "$p" && "$p" != "/" && "$p" != "$HOME" && "$p" != "." ]]; do
+        chmod 755 "$p" 2>/dev/null || break
+        p="$(dirname "$p")"
+    done
+    return 0
 }
 
 ensure_tree_access() {
@@ -359,6 +378,55 @@ get_mtime() {
     else
         stat -f %m "$file_path"
     fi
+}
+
+# Returns the file mode in octal (e.g. "755") in a portable way.
+# @param $1 - The file path.
+get_mode() {
+    local file_path="$1"
+    if stat -c %a "$file_path" &>/dev/null; then
+        stat -c %a "$file_path"
+    else
+        stat -f %Mp%Lp "$file_path" 2>/dev/null | tail -c 4 | sed 's/^0*//'
+    fi
+}
+
+# Verifies a path tree has the expected modes for a shared admin
+# deployment: 755 on every directory, $1 on every file.  Prints a
+# warning for each mismatch but does not abort.  Designed to be cheap
+# enough to run at the end of every subcommand so an admin sees any
+# permission drift immediately.
+# @param $1 - Root path to verify.
+# @param $2 - Expected file mode (e.g. 644, 755).
+# @param $3 - Optional label for log output.
+verify_tree_perms() {
+    local root_path="$1"
+    local expected_file_mode="$2"
+    local label="${3:-tree}"
+    [[ -e "$root_path" ]] || return 0
+
+    local mismatches=0 path actual
+    while IFS= read -r path; do
+        actual=$(get_mode "$path")
+        if [[ -d "$path" ]]; then
+            if [[ "$actual" != "755" ]]; then
+                warn -p "Permission warning: dir $path is $actual (expected 755)"
+                mismatches=$((mismatches + 1))
+            fi
+        elif [[ -f "$path" ]]; then
+            if [[ "$actual" != "$expected_file_mode" ]]; then
+                warn -p "Permission warning: file $path is $actual (expected $expected_file_mode)"
+                mismatches=$((mismatches + 1))
+            fi
+        fi
+    done < <(find "$root_path" \( -type d -o -type f \) 2>/dev/null)
+
+    if [[ $mismatches -eq 0 ]]; then
+        echo "   Permission check ($label): all paths under $root_path match (dirs 755, files $expected_file_mode)."
+    else
+        warn -p "Permission check ($label): $mismatches path(s) had unexpected modes under $root_path."
+    fi
+    return 0
 }
 
 # Executes a given subcommand for a list of URIs.
@@ -566,6 +634,15 @@ pull() {
     }
     echo "   Pull complete."
     echo "   Container image is saved to: $target_image_path"
+    # Confirm the image lands at 644 even when the container runtime
+    # creates it with a tighter mode (some apptainer versions honor
+    # umask while pulling).
+    if [[ $personal -eq 0 ]]; then
+        local actual_mode; actual_mode=$(get_mode "$target_image_path")
+        if [[ "$actual_mode" != "644" ]]; then
+            warn -p "Permission warning: image $target_image_path is $actual_mode (expected 644)"
+        fi
+    fi
 
     # --- RE-ADDED REPOSITORY UPDATE LOGIC ---
     if [[ $update_repo -eq 1 ]];
@@ -604,6 +681,10 @@ pull() {
 
         # Atomically replace the old file with the new one
         if mv "$temp_file" "$app_file"; then
+            # mktemp creates files mode 600; restore the world-readable
+            # 644 expected for shared metadata so users / other admins
+            # don't lose read access after a version bump.
+            chmod 644 "$app_file"
             echo "   Updated app info file: $app_file with new version $version"
         else
             warn -p "Error: Failed to update app info file '$app_file'."
@@ -659,6 +740,12 @@ module() {
         chmod 644 "$OUTFILE"
         ensure_tree_access "${module_outdir}/$(uri2app "$URI")" 644
         echo "   Generated module: $OUTFILE"
+        # In shared admin mode, sanity-check that every path under this
+        # app's module tree has the right modes.  Skipped in personal
+        # mode where the user owns everything anyway.
+        if [[ $personal -eq 0 ]]; then
+            verify_tree_perms "${module_outdir}/$(uri2app "$URI")" 644 "modulefile"
+        fi
     else
         rm -f "$tmpfile"
         warn -p "Error: Failed to write to '$OUTFILE'"
@@ -929,8 +1016,13 @@ exec() {
     done
 
     ensure_tree_access "${exec_outdir}/${app}" 755
-    
+
     echo "   Executables generated in: ${exec_outdir}/${app}/${ver}"
+    # Sanity-check the wrapper tree in shared admin mode.  Wrappers are
+    # all executable, so files and dirs both want 755.
+    if [[ $personal -eq 0 ]]; then
+        verify_tree_perms "${exec_outdir}/${app}" 755 "wrappers"
+    fi
 }
 
 # Checks if a given command exists inside the container.
@@ -1035,6 +1127,9 @@ create_appinfo_file() {
         echo "Home Page: $homepage"
         echo "Programs: $programs"
     } > "$localappinfo"
+    # Make sure other admins (and downstream tooling) can read the
+    # metadata regardless of the calling shell's umask.
+    chmod 644 "$localappinfo"
 }
 
 # Parses the 'Description' and 'Home Page' from an app info file.
