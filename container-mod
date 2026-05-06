@@ -41,30 +41,46 @@ MODULE_SYSTEM="lmod"
 ###############################################################################
 
 detect_container_runtime() {
+    # Prefer the module-provided runtime when one is available, even
+    # when an OS-installed binary already lives in PATH.  Sites like
+    # Tufts ship Apptainer both as a system package (in /usr/bin) and
+    # as an Lmod module; the module is the admin-curated version that
+    # the rest of the cluster expects, so we want generated modules
+    # and wrappers to use it consistently rather than whatever the
+    # package manager dropped on disk.
+    #
+    # Fallback chain:
+    #   1. module load singularity  (if a module by that name exists)
+    #   2. module load apptainer    (if a module by that name exists)
+    #   3. singularity in PATH      (system binary)
+    #   4. apptainer in PATH        (system binary)
+    #   5. error
+    if command -v module &>/dev/null; then
+        if module_is_available "singularity"; then
+            if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
+                CONTAINER_RUNTIME="singularity"
+                CONTAINER_MODULE_NAME="singularity"
+                return 0
+            fi
+        fi
+        if module_is_available "apptainer"; then
+            if module load apptainer &>/dev/null && command -v apptainer &>/dev/null; then
+                CONTAINER_RUNTIME="apptainer"
+                CONTAINER_MODULE_NAME="apptainer"
+                return 0
+            fi
+        fi
+    fi
+
+    # Fall back to system binaries when no module-provided runtime
+    # is available (Monishnd-style site with apptainer in /usr/bin
+    # and no Lmod entry, or any host without Lmod at all).
     if command -v singularity &>/dev/null; then
         CONTAINER_RUNTIME="singularity"
         CONTAINER_MODULE_NAME="singularity"
         return 0
     fi
-
     if command -v apptainer &>/dev/null; then
-        CONTAINER_RUNTIME="apptainer"
-        CONTAINER_MODULE_NAME="apptainer"
-        return 0
-    fi
-
-    if ! command -v module &>/dev/null; then
-        warn -p "Error: Failed to find a container runtime (Singularity/Apptainer)."
-        return 1
-    fi
-
-    if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
-        CONTAINER_RUNTIME="singularity"
-        CONTAINER_MODULE_NAME="singularity"
-        return 0
-    fi
-
-    if module load apptainer &>/dev/null && command -v apptainer &>/dev/null; then
         CONTAINER_RUNTIME="apptainer"
         CONTAINER_MODULE_NAME="apptainer"
         return 0
