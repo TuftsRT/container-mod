@@ -1,3 +1,4 @@
 MOD_EXISTING_DIR_DEF="/cluster/tufts/ngc/modules"  # Directory to store ready-to-use modulefiles
 PUBLIC_IMAGEDIR="/cluster/tufts/ngc/images"
 PUBLIC_EXECUTABLE_DIR="/cluster/tufts/ngc/tools"
+BIND_PATH="/cluster/tufts"

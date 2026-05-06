@@ -215,7 +215,7 @@ _ensure_uri_details_cached() {
 
 	ver="${uri##*/}" # Get the last component
 	ver=${ver##*:}   # Get the part after the colon
-	ver=$(echo "$ver" | sed -re 's/(--.*)?(_[0-9]+)?$//') # Strip version suffixes
+	ver=$(echo "$ver" | sed -Ee 's/(--.*)?(_[0-9]+)?$//') # Strip version suffixes
 
     # Populate the cache
     cache_set "$uri" "$app" "$ver"
@@ -250,10 +250,12 @@ Options:
   -m, --moduledir DIR     Specify the directory for storing generated module files.
   -u, --update            Update the app info file with the new version.
   -p, --personal          Create files in your personal directories (~/privatemodules, etc.).
-  --profile               Use a specific configuration profile.
+  --profile NAME          Use a specific configuration profile.
   -s, --module-system SYS Choose the module system: lmod or tcl (default: lmod).
   -t, --tcl               Shortcut for --module-system tcl.
   -j, --jupyter           Generate a Jupyter kernel for the container.
+  -l, --list              List available profiles and exit.
+  -v, --version           Print the script version and exit.
   -h, --help              Display this help message and exit.
 
 Examples:
@@ -527,6 +529,9 @@ pull() {
     if [[ $is_local_file -eq 1 ]];
     then
         echo "   Local image file detected. Leaving it in its original location: $uri"
+        if [[ $update_repo -eq 1 ]]; then
+            warn -p "Note: --update is ignored for local image files (no remote URI to record)."
+        fi
         return 0
     fi
 
@@ -549,7 +554,11 @@ pull() {
 
     # Pull the image and set its permissions to 644 (read-only for others).
     echo -e "   \e[1mPulling Singularity image...\e[0m"
-    "$CONTAINER_RUNTIME" pull --force "$target_image_path" "$uri" || exit 1
+    if ! "$CONTAINER_RUNTIME" pull --force "$target_image_path" "$uri"; then
+        warn -p "Error: Container pull failed for $uri"
+        rm -f "$target_image_path"
+        return 1
+    fi
     chmod 644 "$target_image_path"
     ensure_dir_access "$image_outdir" || {
         warn -p "Error: Failed to set permissions on image directory '$image_outdir'"
@@ -633,16 +642,27 @@ module() {
 
     # This command substitution captures the output of print_modulefile
     local MODULE; MODULE=$(print_modulefile "$URI")
+    if [[ -z "$MODULE" ]]; then
+        warn -p "Error: Failed to render modulefile content for '$URI'"
+        return 1
+    fi
 
-    if echo "$MODULE" > "$OUTFILE";
-    then
+    # Write atomically via a sibling temp file so an interrupted write
+    # cannot leave a partial modulefile that Lmod would still try to load.
+    local tmpfile
+    tmpfile=$(mktemp "${OUTFILE}.XXXXXX") || {
+        warn -p "Error: Failed to create temp file next to '$OUTFILE'"
+        return 1
+    }
+    if printf '%s\n' "$MODULE" > "$tmpfile" && mv "$tmpfile" "$OUTFILE"; then
         # Set permissions to 644 (read-only for others).
         chmod 644 "$OUTFILE"
         ensure_tree_access "${module_outdir}/$(uri2app "$URI")" 644
         echo "   Generated module: $OUTFILE"
     else
+        rm -f "$tmpfile"
         warn -p "Error: Failed to write to '$OUTFILE'"
-        exit 1
+        return 1
     fi
 }
 
@@ -734,8 +754,34 @@ generate_new_modulefile() {
     local registry=""
     local registry_url=""
     case "$uri" in
-         *"biocontainers"*) registry="BioContainers"; registry_url="https://biocontainers.pro/tools/$app" ;;
-        *) registry="DockerHub"; local docker_repo=""; docker_repo=$(echo "$uri" | sed 's|docker://\([^:]*\):.*|\1|'); registry_url="https://hub.docker.com/r/${docker_repo}" ;;
+        *"biocontainers"*)
+            registry="BioContainers"
+            registry_url="https://biocontainers.pro/tools/$app"
+            ;;
+        *"nvcr.io/"*)
+            registry="NVIDIA NGC"
+            local ngc_repo=""
+            ngc_repo=$(echo "$uri" | sed -E 's|^[a-z]+://nvcr\.io/([^:]*):.*|\1|')
+            registry_url="https://catalog.ngc.nvidia.com/orgs/${ngc_repo}"
+            ;;
+        *"ghcr.io/"*)
+            registry="GitHub Container Registry"
+            local ghcr_repo=""
+            ghcr_repo=$(echo "$uri" | sed -E 's|^[a-z]+://ghcr\.io/([^:]*):.*|\1|')
+            registry_url="https://ghcr.io/${ghcr_repo}"
+            ;;
+        *"quay.io/"*)
+            registry="Quay.io"
+            local quay_repo=""
+            quay_repo=$(echo "$uri" | sed -E 's|^[a-z]+://quay\.io/([^:]*):.*|\1|')
+            registry_url="https://quay.io/repository/${quay_repo}"
+            ;;
+        *)
+            registry="DockerHub"
+            local docker_repo=""
+            docker_repo=$(echo "$uri" | sed -E 's|^[a-z]+://([^:]*):.*|\1|')
+            registry_url="https://hub.docker.com/r/${docker_repo}"
+            ;;
     esac
 
     local template_file
@@ -760,6 +806,16 @@ generate_new_modulefile() {
     local esc_ver; esc_ver=$(sedi_escape "$ver")
     local esc_exec_dir; esc_exec_dir=$(sedi_escape "$exec_outdir")
     local esc_app; esc_app=$(sedi_escape "$app")
+    local esc_bind; esc_bind=$(sedi_escape "${BIND_PATH:-}")
+
+    # Render the bind block conditionally so users without a configured
+    # BIND_PATH do not get a hardcoded site-specific path baked into modules.
+    local bind_lua_block=""
+    local bind_tcl_block=""
+    if [[ -n "${BIND_PATH:-}" ]]; then
+        bind_lua_block="prepend_path{\"APPTAINER_BIND\",\"${esc_bind}\",delim=\",\"}"
+        bind_tcl_block="prepend-path --delim=\",\" APPTAINER_BIND \"${esc_bind}\""
+    fi
 
     # Substitute placeholders in the template using the escaped variables
     sed -e "s|\${DESCRIPTION}|$esc_desc|g" \
@@ -772,6 +828,8 @@ generate_new_modulefile() {
         -e "s|\${EXECUTABLE_DIR}|$esc_exec_dir|g" \
         -e "s|\${APP}|$esc_app|g" \
         -e "s|\${RUNTIME_MODULE}|${CONTAINER_MODULE_NAME}|g" \
+        -e "s|\${BIND_LUA}|$bind_lua_block|g" \
+        -e "s|\${BIND_TCL}|$bind_tcl_block|g" \
         "$template_file"
 }
 
@@ -882,11 +940,16 @@ exec() {
 confirm_exec_exists() {
     local exec_cmd="$1"
     local image_path="$2"
-    if ! "$CONTAINER_RUNTIME" exec "$image_path" which "$exec_cmd" &> /dev/null; then
-        return 1
-    else
+    # Use POSIX `command -v` via /bin/sh - works in distroless containers
+    # where `which` is not installed.  Fall back to `which` if the shell
+    # form fails for any reason.
+    if "$CONTAINER_RUNTIME" exec "$image_path" sh -c "command -v $(printf %q "$exec_cmd")" &> /dev/null; then
         return 0
     fi
+    if "$CONTAINER_RUNTIME" exec "$image_path" which "$exec_cmd" &> /dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 # Creates a single executable wrapper script.
@@ -929,18 +992,17 @@ if ! command -v "\$RUNTIME" &> /dev/null; then
     exit 1
 fi
 
-# Determine GPU flags for the container runtime
-OPTIONS=""
-if nvidia-smi -L &> /dev/null;
-then
-    OPTIONS="--nv"
-fi
-if rocm-smi -L &> /dev/null; then
-    OPTIONS="\$OPTIONS --rocm"
+# Determine GPU flags for the container runtime.  --nv (NVIDIA) and --rocm
+# (AMD) are mutually exclusive; prefer --nv when both runtimes are detected.
+OPTIONS=()
+if command -v nvidia-smi &> /dev/null && nvidia-smi -L &> /dev/null; then
+    OPTIONS+=("--nv")
+elif command -v rocm-smi &> /dev/null && rocm-smi -L &> /dev/null; then
+    OPTIONS+=("--rocm")
 fi
 
 # Run the container command
-"\$RUNTIME" exec \$OPTIONS "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
+"\$RUNTIME" exec "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
 EOF
 
     # Set permissions to 755 (executable for all).
@@ -1125,11 +1187,24 @@ PRIVATE_MODULEDIR="$HOME/privatemodules"
 PRIVATE_IMAGEDIR="$HOME/container-apps/images"
 PROFILEHOMEDIR="$HOME/container-apps/profiles"
 
+# These are populated by profile files.  Initialize them so `set -u`
+# does not abort when running in personal mode without a profile.
+MOD_EXISTING_DIR=""
+MOD_EXISTING_DIR_DEF=""
+PUBLIC_IMAGEDIR=""
+PUBLIC_EXECUTABLE_DIR=""
+BIND_PATH=""
+
 # --- Argument and Subcommand Parsing ---
-SUBCOMMAND="$1"
+SUBCOMMAND="${1:-}"
 if [[ -z "$SUBCOMMAND" || "$SUBCOMMAND" == "-h" || "$SUBCOMMAND" == "--help" ]];
 then
     help_message
+    exit 0
+fi
+if [[ "$SUBCOMMAND" == "-v" || "$SUBCOMMAND" == "--version" ]];
+then
+    echo "$PROGNAME $VERSION"
     exit 0
 fi
 if [[ "$SUBCOMMAND" == "-l" || "$SUBCOMMAND" == "--list" ]];
@@ -1193,7 +1268,7 @@ else
 fi
 
 # Set default if not defined in profile
-MOD_EXISTING_DIR="${MOD_EXISTING_DIR:-$MOD_EXISTING_DIR_DEF}"
+MOD_EXISTING_DIR="${MOD_EXISTING_DIR:-${MOD_EXISTING_DIR_DEF:-}}"
 
 # --- Initialization ---
 echo "Initializing..."
@@ -1212,7 +1287,7 @@ then
 else
     create_dir "$EXEC_OUTDIR" "Created public executable directory"
     create_dir "$MOD_OUTDIR" "Created public module directory"
-    if [[ -n "$PUBLIC_IMAGEDIR" ]]; then create_dir "$PUBLIC_IMAGEDIR" "Created public image directory"; fi
+    if [[ -n "${PUBLIC_IMAGEDIR:-}" ]]; then create_dir "$PUBLIC_IMAGEDIR" "Created public image directory"; fi
 fi
 
 # --- Main Subcommand Execution ---
