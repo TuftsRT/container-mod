@@ -1368,9 +1368,24 @@ MOD_EXISTING_DIR="${MOD_EXISTING_DIR:-${MOD_EXISTING_DIR_DEF:-}}"
 # --- Initialization ---
 echo "Initializing..."
 ensure_appinfo_dir
+
+# Only prompt for missing app metadata when the subcommand will actually
+# consume it.  A plain `pull` (without --update) just downloads the
+# image and never reads Description / Home Page / Programs, so we skip
+# the interactive prompt and let users pull containers without having
+# to commit to writing a metadata entry up front.  `pull -u` still
+# needs the file to record the new version() line, and `module`,
+# `exec`, and `pipe` all consume metadata directly.
+needs_appinfo=1
+if [[ "$SUBCOMMAND" == "pull" && $update_repo -eq 0 ]]; then
+    needs_appinfo=0
+fi
+
 for URI in "$@"; do
     _ensure_uri_details_cached "$URI" || { warn -p "Could not get app details for $URI"; exit 1; }
-    ensure_appinfo_file "$URI"
+    if [[ $needs_appinfo -eq 1 ]]; then
+        ensure_appinfo_file "$URI"
+    fi
 done
 
 # Create output directories
