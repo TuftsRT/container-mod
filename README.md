@@ -104,6 +104,15 @@ Profile variables map to runtime behavior like this:
   modulefiles. Set this to a site-wide bind path such as `/cluster/tufts`
   if your cluster requires every container to bind a shared filesystem.
   When unset, no bind line is emitted and generated modules stay portable.
+- `RUNTIME_MODULE`: optional override for the container runtime
+  dependency emitted into generated modulefiles. When unset, the
+  script auto-detects: it emits `depends_on("singularity")` (or
+  `apptainer`) only when a module by that name is actually loadable
+  on the build host, and emits no dependency line otherwise. Set this
+  explicitly to pin a specific module (for example
+  `RUNTIME_MODULE="apptainer/1.3.0"`), or set it to `""` to force the
+  dependency line off on systems where the runtime is just a system
+  binary with no corresponding module entry.
 
 When a profile is active, the script still writes newly generated modulefiles to
 `<OUTDIR>/incomplete` unless you are in personal mode. This lets you stage and

@@ -391,6 +391,36 @@ get_mode() {
     fi
 }
 
+# Returns 0 if a Lmod / Environment Modules entry by the given name is
+# loadable on this system.  Used to decide whether the generated
+# modulefile should contain a `depends_on(...)` line.
+#
+# Some sites have the container runtime available only as a system
+# binary (e.g. Apptainer installed via the package manager, with a
+# `singularity` alias), with no corresponding entry in the module
+# tree.  Without this check, the generated modulefile would
+# `depends_on("singularity")` and `module load <app>` would fail with
+# "module(s) are unknown: singularity".
+#
+# This check is intentionally permissive - the failure mode of
+# falsely thinking a module exists is one missing module load at
+# runtime; falsely thinking it doesn't exist is a generated
+# modulefile that simply doesn't auto-load the runtime.  Both are
+# easily recoverable, while the previous behavior (always emit
+# depends_on) was a hard failure on systems without the module.
+#
+# @param $1 - The module name to check.
+# @return 0 if available, 1 otherwise.
+module_is_available() {
+    local mod="$1"
+    [[ -z "$mod" ]] && return 1
+    if ! command -v module &>/dev/null; then
+        return 1
+    fi
+    # `module avail` writes its listing to stderr; redirect both.
+    module avail "$mod" 2>&1 | grep -qw -- "$mod"
+}
+
 # Verifies a path tree has the expected modes for a shared admin
 # deployment: 755 on every directory, $1 on every file.  Prints a
 # warning for each mismatch but does not abort.  Designed to be cheap
@@ -904,6 +934,18 @@ generate_new_modulefile() {
         bind_tcl_block="prepend-path --delim=\",\" APPTAINER_BIND \"${esc_bind}\""
     fi
 
+    # Render the runtime-dependency block only when there is a real
+    # module to depend on.  Sites where the container runtime is just
+    # a system binary (e.g. Apptainer with no Lmod entry) leave this
+    # empty so generated modulefiles do not fail to load.
+    local runtime_depends_lua=""
+    local runtime_depends_tcl=""
+    if [[ -n "${RUNTIME_MODULE:-}" ]]; then
+        local esc_rt; esc_rt=$(sedi_escape "$RUNTIME_MODULE")
+        runtime_depends_lua="depends_on(\"${esc_rt}\")"
+        runtime_depends_tcl="if { [info commands depends-on] ne \"\" } { depends-on ${esc_rt} } else { if { ![is-loaded ${esc_rt}] } { module load ${esc_rt} } }"
+    fi
+
     # Substitute placeholders in the template using the escaped variables
     sed -e "s|\${DESCRIPTION}|$esc_desc|g" \
         -e "s|\${REGISTRY}|$esc_reg|g" \
@@ -914,7 +956,8 @@ generate_new_modulefile() {
         -e "s|\${VERSION}|$esc_ver|g" \
         -e "s|\${EXECUTABLE_DIR}|$esc_exec_dir|g" \
         -e "s|\${APP}|$esc_app|g" \
-        -e "s|\${RUNTIME_MODULE}|${CONTAINER_MODULE_NAME}|g" \
+        -e "s|\${RUNTIME_DEPENDS_LUA}|$runtime_depends_lua|g" \
+        -e "s|\${RUNTIME_DEPENDS_TCL}|$runtime_depends_tcl|g" \
         -e "s|\${BIND_LUA}|$bind_lua_block|g" \
         -e "s|\${BIND_TCL}|$bind_tcl_block|g" \
         "$template_file"
@@ -1289,6 +1332,10 @@ MOD_EXISTING_DIR_DEF=""
 PUBLIC_IMAGEDIR=""
 PUBLIC_EXECUTABLE_DIR=""
 BIND_PATH=""
+# RUNTIME_MODULE is intentionally NOT initialized here.  We detect
+# "user did not set it" later via ${RUNTIME_MODULE+x} so that
+# profiles can either override the auto-detection or set
+# RUNTIME_MODULE="" to explicitly disable the depends_on line.
 
 # --- Argument and Subcommand Parsing ---
 SUBCOMMAND="${1:-}"
@@ -1364,6 +1411,22 @@ fi
 
 # Set default if not defined in profile
 MOD_EXISTING_DIR="${MOD_EXISTING_DIR:-${MOD_EXISTING_DIR_DEF:-}}"
+
+# Resolve the Lmod / Environment Modules name to record as the
+# runtime dependency in generated modulefiles.
+#
+#   - If the profile (or environment) set RUNTIME_MODULE explicitly
+#     (including to ""), honor that choice.
+#   - Otherwise auto-detect: if a module by the runtime's name is
+#     loadable, depend on it; if not (e.g. Apptainer is just a system
+#     binary with no module entry), emit no dependency line.
+if [[ -z "${RUNTIME_MODULE+x}" ]]; then
+    if module_is_available "$CONTAINER_MODULE_NAME"; then
+        RUNTIME_MODULE="$CONTAINER_MODULE_NAME"
+    else
+        RUNTIME_MODULE=""
+    fi
+fi
 
 # --- Initialization ---
 echo "Initializing..."

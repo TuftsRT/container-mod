@@ -58,9 +58,6 @@ prepend-path    PATH    "${modroot}/bin"
 #-- Optional bind path (set BIND_PATH in your profile to enable)
 ${BIND_TCL}
 
-#-- Container runtime dependency
-if { [info commands depends-on] ne "" } {
-    depends-on ${RUNTIME_MODULE}
-} else {
-    if { ![is-loaded ${RUNTIME_MODULE}] } { module load ${RUNTIME_MODULE} }
-}
+#-- Container runtime dependency (omitted on sites where the runtime
+#-- is a system binary with no corresponding module entry).
+${RUNTIME_DEPENDS_TCL}
