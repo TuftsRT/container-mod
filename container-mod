@@ -41,30 +41,49 @@ MODULE_SYSTEM="lmod"
 ###############################################################################
 
 detect_container_runtime() {
+    # Prefer the module-provided runtime when one is available, even
+    # when an OS-installed binary already lives in PATH.  Sites like
+    # Tufts ship Apptainer both as a system package (in /usr/bin) and
+    # as an Lmod module; the module is the admin-curated version that
+    # the rest of the cluster expects, so we want generated modules
+    # and wrappers to use it consistently rather than whatever the
+    # package manager dropped on disk.
+    #
+    # Fallback chain:
+    #   1. module load singularity  (if a module by that name exists)
+    #   2. module load apptainer    (if a module by that name exists)
+    #   3. singularity in PATH      (system binary)
+    #   4. apptainer in PATH        (system binary)
+    #   5. error
+    # Make sure the `module` function is reachable from this subshell
+    # before we ask it about availability or loading.  Without this,
+    # Lmod's init-script-defined `module` function is invisible here.
+    if ensure_module_function && type module &>/dev/null; then
+        if module_is_available "singularity"; then
+            if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
+                CONTAINER_RUNTIME="singularity"
+                CONTAINER_MODULE_NAME="singularity"
+                return 0
+            fi
+        fi
+        if module_is_available "apptainer"; then
+            if module load apptainer &>/dev/null && command -v apptainer &>/dev/null; then
+                CONTAINER_RUNTIME="apptainer"
+                CONTAINER_MODULE_NAME="apptainer"
+                return 0
+            fi
+        fi
+    fi
+
+    # Fall back to system binaries when no module-provided runtime
+    # is available (Monishnd-style site with apptainer in /usr/bin
+    # and no Lmod entry, or any host without Lmod at all).
     if command -v singularity &>/dev/null; then
         CONTAINER_RUNTIME="singularity"
         CONTAINER_MODULE_NAME="singularity"
         return 0
     fi
-
     if command -v apptainer &>/dev/null; then
-        CONTAINER_RUNTIME="apptainer"
-        CONTAINER_MODULE_NAME="apptainer"
-        return 0
-    fi
-
-    if ! command -v module &>/dev/null; then
-        warn -p "Error: Failed to find a container runtime (Singularity/Apptainer)."
-        return 1
-    fi
-
-    if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
-        CONTAINER_RUNTIME="singularity"
-        CONTAINER_MODULE_NAME="singularity"
-        return 0
-    fi
-
-    if module load apptainer &>/dev/null && command -v apptainer &>/dev/null; then
         CONTAINER_RUNTIME="apptainer"
         CONTAINER_MODULE_NAME="apptainer"
         return 0
@@ -391,6 +410,73 @@ get_mode() {
     fi
 }
 
+# Lmod and Environment Modules define `module` as a shell function
+# in /etc/profile.d/*.sh, NOT as a regular executable.  Shell
+# functions are not inherited by child processes by default, so when
+# container-mod starts as a subprocess of an interactive login shell
+# the function is missing and every `module ...` invocation fails.
+# We re-source the well-known init scripts (or fall back to LMOD_CMD
+# directly) so the function is available inside the script.
+ensure_module_function() {
+    if type module &>/dev/null; then
+        return 0
+    fi
+    local init
+    for init in \
+        "${LMOD_PKG:-}/init/bash" \
+        "${MODULESHOME:-}/init/bash" \
+        /etc/profile.d/lmod.sh \
+        /etc/profile.d/z00_lmod.sh \
+        /etc/profile.d/00-modulepath.sh \
+        /etc/profile.d/modules.sh; do
+        [[ -z "$init" || ! -f "$init" ]] && continue
+        # shellcheck disable=SC1090
+        source "$init" 2>/dev/null
+        if type module &>/dev/null; then
+            return 0
+        fi
+    done
+    # Synthesize a `module` function that calls LMOD_CMD directly.
+    # LMOD_CMD is exported by Lmod's init script and IS inherited by
+    # subprocesses, so this works even when the function form isn't.
+    if [[ -n "${LMOD_CMD:-}" && -x "${LMOD_CMD:-}" ]]; then
+        module() { eval "$("$LMOD_CMD" bash "$@")"; }
+        return 0
+    fi
+    return 1
+}
+
+# Returns 0 if a Lmod / Environment Modules entry by the given name is
+# loadable on this system.  Used to decide whether the generated
+# modulefile should contain a `depends_on(...)` line.
+#
+# Some sites have the container runtime available only as a system
+# binary (e.g. Apptainer installed via the package manager, with a
+# `singularity` alias), with no corresponding entry in the module
+# tree.  Without this check, the generated modulefile would
+# `depends_on("singularity")` and `module load <app>` would fail with
+# "module(s) are unknown: singularity".
+#
+# This check is intentionally permissive - the failure mode of
+# falsely thinking a module exists is one missing module load at
+# runtime; falsely thinking it doesn't exist is a generated
+# modulefile that simply doesn't auto-load the runtime.  Both are
+# easily recoverable, while the previous behavior (always emit
+# depends_on) was a hard failure on systems without the module.
+#
+# @param $1 - The module name to check.
+# @return 0 if available, 1 otherwise.
+module_is_available() {
+    local mod="$1"
+    [[ -z "$mod" ]] && return 1
+    ensure_module_function || return 1
+    if ! type module &>/dev/null; then
+        return 1
+    fi
+    # `module avail` writes its listing to stderr; redirect both.
+    module avail "$mod" 2>&1 | grep -qw -- "$mod"
+}
+
 # Verifies a path tree has the expected modes for a shared admin
 # deployment: 755 on every directory, $1 on every file.  Prints a
 # warning for each mismatch but does not abort.  Designed to be cheap
@@ -581,7 +667,11 @@ uri2ver() {
 
 # Pulls a container image from a remote URI.
 # @param $1 - The remote container URI.
-pull() {
+#
+# Named `cmd_pull` (not `pull`) so it does not shadow any system
+# command of the same name.  Subcommand dispatch translates the
+# user-visible `pull` keyword into a call to `cmd_pull`.
+cmd_pull() {
     local uri=$1
     local is_local_file=0
     # If the URI is a local file, do nothing.
@@ -696,7 +786,13 @@ pull() {
 
 # Generates an Lmod modulefile for a container.
 # @param $1 - The container URI.
-module() {
+#
+# Named `cmd_module` (not `module`) so it does not shadow Lmod's /
+# Environment Modules' shell function of the same name - which would
+# break detect_container_runtime's `module avail` / `module load`
+# calls.  Subcommand dispatch translates the user-visible `module`
+# keyword into a call to `cmd_module`.
+cmd_module() {
     local URI="$1"
     local module_outdir
     if [[ $personal -eq 1 ]];
@@ -904,6 +1000,18 @@ generate_new_modulefile() {
         bind_tcl_block="prepend-path --delim=\",\" APPTAINER_BIND \"${esc_bind}\""
     fi
 
+    # Render the runtime-dependency block only when there is a real
+    # module to depend on.  Sites where the container runtime is just
+    # a system binary (e.g. Apptainer with no Lmod entry) leave this
+    # empty so generated modulefiles do not fail to load.
+    local runtime_depends_lua=""
+    local runtime_depends_tcl=""
+    if [[ -n "${RUNTIME_MODULE:-}" ]]; then
+        local esc_rt; esc_rt=$(sedi_escape "$RUNTIME_MODULE")
+        runtime_depends_lua="depends_on(\"${esc_rt}\")"
+        runtime_depends_tcl="if { [info commands depends-on] ne \"\" } { depends-on ${esc_rt} } else { if { ![is-loaded ${esc_rt}] } { module load ${esc_rt} } }"
+    fi
+
     # Substitute placeholders in the template using the escaped variables
     sed -e "s|\${DESCRIPTION}|$esc_desc|g" \
         -e "s|\${REGISTRY}|$esc_reg|g" \
@@ -914,7 +1022,8 @@ generate_new_modulefile() {
         -e "s|\${VERSION}|$esc_ver|g" \
         -e "s|\${EXECUTABLE_DIR}|$esc_exec_dir|g" \
         -e "s|\${APP}|$esc_app|g" \
-        -e "s|\${RUNTIME_MODULE}|${CONTAINER_MODULE_NAME}|g" \
+        -e "s|\${RUNTIME_DEPENDS_LUA}|$runtime_depends_lua|g" \
+        -e "s|\${RUNTIME_DEPENDS_TCL}|$runtime_depends_tcl|g" \
         -e "s|\${BIND_LUA}|$bind_lua_block|g" \
         -e "s|\${BIND_TCL}|$bind_tcl_block|g" \
         "$template_file"
@@ -950,7 +1059,11 @@ repurpose_old_modulefile() {
 
 # Generates executable wrapper scripts for programs inside a container.
 # @param $1 - The container URI.
-exec() {
+#
+# Named `cmd_exec` (not `exec`) so it does not shadow bash's `exec`
+# builtin.  Subcommand dispatch translates the user-visible `exec`
+# keyword into a call to `cmd_exec`.
+cmd_exec() {
     local uri="$1"
     local app; app=$(uri2app "$uri") || return 1
     local ver; ver=$(uri2ver "$uri") || return 1
@@ -1059,6 +1172,32 @@ generate_executable() {
 
     ensure_dir_access "$(dirname "$executable")" || return 1
 
+    # Build the runtime-bootstrap block.  If a Lmod entry for the
+    # runtime exists on this host (we resolved this in RUNTIME_MODULE
+    # at startup), the wrapper falls back to `module load <name>`
+    # when the runtime binary is missing from PATH.  On hosts where
+    # the runtime is just a system binary with no module entry
+    # (RUNTIME_MODULE empty), we skip the module-load step entirely
+    # and just print a clear error - calling `module load` against a
+    # non-existent module would itself error and confuse the user.
+    local runtime_bootstrap
+    if [[ -n "${RUNTIME_MODULE:-}" ]]; then
+        read -r -d '' runtime_bootstrap <<EOF || true
+# Load the container runtime if it is not already loaded.
+if ! command -v "\$RUNTIME" &> /dev/null; then
+    if command -v module &> /dev/null; then
+        module load "$RUNTIME_MODULE" || { echo "Failed to load $RUNTIME_MODULE module"; exit 1; }
+    fi
+fi
+EOF
+    else
+        read -r -d '' runtime_bootstrap <<'EOF' || true
+# This wrapper was generated on a host where the container runtime
+# is provided as a system binary (no Lmod entry).  We do not attempt
+# `module load` here because there is no module by that name to load.
+EOF
+    fi
+
     # Create the wrapper script with a heredoc
 cat <<EOF >"$executable"
 #!/usr/bin/env bash
@@ -1072,12 +1211,7 @@ IMAGE_DIR="$image_dir"
 IMAGE="$image_name"
 RUNTIME="$CONTAINER_RUNTIME"
 
-# Load the container runtime if it is not already loaded
-if ! command -v "\$RUNTIME" &> /dev/null; then
-    if command -v module &> /dev/null; then
-        module load "$CONTAINER_MODULE_NAME" || { echo "Failed to load $CONTAINER_MODULE_NAME module"; exit 1; }
-    fi
-fi
+$runtime_bootstrap
 
 if ! command -v "\$RUNTIME" &> /dev/null; then
     echo "Failed to find container runtime: \$RUNTIME"
@@ -1289,6 +1423,10 @@ MOD_EXISTING_DIR_DEF=""
 PUBLIC_IMAGEDIR=""
 PUBLIC_EXECUTABLE_DIR=""
 BIND_PATH=""
+# RUNTIME_MODULE is intentionally NOT initialized here.  We detect
+# "user did not set it" later via ${RUNTIME_MODULE+x} so that
+# profiles can either override the auto-detection or set
+# RUNTIME_MODULE="" to explicitly disable the depends_on line.
 
 # --- Argument and Subcommand Parsing ---
 SUBCOMMAND="${1:-}"
@@ -1365,6 +1503,22 @@ fi
 # Set default if not defined in profile
 MOD_EXISTING_DIR="${MOD_EXISTING_DIR:-${MOD_EXISTING_DIR_DEF:-}}"
 
+# Resolve the Lmod / Environment Modules name to record as the
+# runtime dependency in generated modulefiles.
+#
+#   - If the profile (or environment) set RUNTIME_MODULE explicitly
+#     (including to ""), honor that choice.
+#   - Otherwise auto-detect: if a module by the runtime's name is
+#     loadable, depend on it; if not (e.g. Apptainer is just a system
+#     binary with no module entry), emit no dependency line.
+if [[ -z "${RUNTIME_MODULE+x}" ]]; then
+    if module_is_available "$CONTAINER_MODULE_NAME"; then
+        RUNTIME_MODULE="$CONTAINER_MODULE_NAME"
+    else
+        RUNTIME_MODULE=""
+    fi
+fi
+
 # --- Initialization ---
 echo "Initializing..."
 ensure_appinfo_dir
@@ -1402,13 +1556,13 @@ fi
 
 # --- Main Subcommand Execution ---
 case "$SUBCOMMAND" in
-    pull)   handle_subcommand pull "$@" ;;
-    module) handle_subcommand module "$@" ;;
-    exec)   handle_subcommand exec "$@" ;;
+    pull)   handle_subcommand cmd_pull "$@" ;;
+    module) handle_subcommand cmd_module "$@" ;;
+    exec)   handle_subcommand cmd_exec "$@" ;;
     pipe)
-        handle_subcommand pull "$@"
-        handle_subcommand module "$@"
-        handle_subcommand exec "$@"
+        handle_subcommand cmd_pull "$@"
+        handle_subcommand cmd_module "$@"
+        handle_subcommand cmd_exec "$@"
         ;;
     *)
         warn -p "Invalid subcommand: $SUBCOMMAND"

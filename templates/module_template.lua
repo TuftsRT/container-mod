@@ -47,7 +47,8 @@ conflict(myModuleName())
 local modroot="${EXECUTABLE_DIR}/${APP}/" .. "${VERSION}"
 prepend_path("PATH", modroot.."/bin", ":")
 ${BIND_LUA}
--- Dependency
-depends_on("${RUNTIME_MODULE}")
+-- Container runtime dependency (omitted on sites where the runtime
+-- is a system binary with no corresponding Lmod entry).
+${RUNTIME_DEPENDS_LUA}
 
 -- Additional commands or environment variables, if any
