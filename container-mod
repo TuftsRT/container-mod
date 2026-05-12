@@ -275,6 +275,7 @@ Options:
   -u, --update            Update the app info file with the new version.
   -p, --personal          Create files in your personal directories (~/privatemodules, etc.).
   --profile NAME          Use a specific configuration profile.
+  -c, --container-app     Specify the container application: singularity or apptainer (default: search for singularity, then apptainer)
   -s, --module-system SYS Choose the module system: lmod or tcl (default: lmod).
   -t, --tcl               Shortcut for --module-system tcl.
   -j, --jupyter           Generate a Jupyter kernel for the container.
