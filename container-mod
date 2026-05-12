@@ -1403,9 +1403,6 @@ AppInfo_DIR="${SCRIPT_TOP_DIR}/repos"
 PROFILEROOT="${SCRIPT_TOP_DIR}/profiles"
 OUTDIR_DEF="."
 OUTDIR="${OUTDIR:-$OUTDIR_DEF}"
-MOD_OUTDIR="${OUTDIR}/incomplete"
-EXEC_OUTDIR="${OUTDIR}/executables"
-JUPYTER_OUTDIR="${OUTDIR}/kernels"
 PRIVATE_EXECUTABLE_DIR="$HOME/container-apps/tools"
 PRIVATE_MODULEDIR="$HOME/privatemodules"
 PRIVATE_IMAGEDIR="$HOME/container-apps/images"
@@ -1463,6 +1460,10 @@ do
     shift
 done
 set -- "${ARGV[@]}" # Set positional parameters to remaining arguments
+
+MOD_OUTDIR="${OUTDIR}/incomplete"
+EXEC_OUTDIR="${OUTDIR}/executables"
+JUPYTER_OUTDIR="${OUTDIR}/kernels"
 
 if [[ "$MODULE_SYSTEM" != "lmod" && "$MODULE_SYSTEM" != "tcl" ]];
 then
