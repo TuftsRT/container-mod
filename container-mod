@@ -269,19 +269,20 @@ Subcommands:
     pipe        Run pull, module, and exec steps sequentially for the given URIs.
 
 Options:
-  -d, --dir DIR           Specify the base output directory.
-  -f, --force             Force overwrite of existing files.
-  -m, --moduledir DIR     Specify the directory for storing generated module files.
-  -u, --update            Update the app info file with the new version.
-  -p, --personal          Create files in your personal directories (~/privatemodules, etc.).
-  --profile NAME          Use a specific configuration profile.
-  -c, --container-app     Specify the container application: singularity or apptainer (default: search for singularity, then apptainer)
-  -s, --module-system SYS Choose the module system: lmod or tcl (default: lmod).
-  -t, --tcl               Shortcut for --module-system tcl.
-  -j, --jupyter           Generate a Jupyter kernel for the container.
-  -l, --list              List available profiles and exit.
-  -v, --version           Print the script version and exit.
-  -h, --help              Display this help message and exit.
+  -d, --dir DIR            Specify the base output directory.
+  -f, --force              Force overwrite of existing files.
+  -m, --moduledir DIR      Specify the directory for storing generated module files.
+  -u, --update             Update the app info file with the new version.
+  -p, --personal           Create files in your personal directories (~/privatemodules, etc.).
+  --profile NAME           Use a specific configuration profile.
+  --write-to-profile-dirs  When using the "--profile" option, output to the directories from the profile
+  -c, --container-app      Specify the container application: singularity or apptainer (default: search for singularity, then apptainer)
+  -s, --module-system SYS  Choose the module system: lmod or tcl (default: lmod).
+  -t, --tcl                Shortcut for --module-system tcl.
+  -j, --jupyter            Generate a Jupyter kernel for the container.
+  -l, --list               List available profiles and exit.
+  -v, --version            Print the script version and exit.
+  -h, --help               Display this help message and exit.
 
 Examples:
     ${scriptname} pull docker://quay.io/biocontainers/vcftools:0.1.16
@@ -1396,6 +1397,7 @@ jupyter() {
 force=0
 personal=0
 jupyter=0
+write_to_profile_dirs=0
 update_repo=0
 PROFILE=""
 SCRIPT_TOP_DIR="$(realpath "${BASH_SOURCE[0]}" | xargs dirname)"
@@ -1449,6 +1451,7 @@ do
         -d|--dir|--directory) shift; OUTDIR="$1" ;;
         -f|--force) force=1 ;;
         -m|--module-dir|--module-directory) shift; MOD_EXISTING_DIR="$1" ;;
+        --write-to-profile-dirs|--write-to-profile-directories) write_to_profile_dirs=1 ;;
         -s|--module-system) shift; MODULE_SYSTEM="$1" ;;
         -u|--update) update_repo=1 ;;
         -p|--personal) personal=1 ;;
@@ -1487,6 +1490,12 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
+if [[ "${PROFILE}" = "" && ${write_to_profile_dirs} -eq 1 ]];
+then
+    warn -p "Error: the \"--write-to-profile-dirs\" option requires the \"-p|--profile profile\" option."
+    exit 1
+fi
+
 detect_container_runtime || exit 1
 
 # --- Profile Loading ---
@@ -1502,6 +1511,24 @@ then
     else
         warn -p "Error: Profile '$PROFILE' not found."
         exit 1
+    fi
+    if [[ ${write_to_profile_dirs} -eq 1 ]];
+    then
+        # changed the output dirs to the ones provided in the current profile
+        if [[ "${MOD_EXISTING_DIR_DEF}" != "" ]];
+        then
+            MOD_OUTDIR="${MOD_EXISTING_DIR_DEF}"
+        else
+            warn -p "Error: MOD_EXISTING_DIR_DEF variable setting not found in the profile '$PROFILE'"
+            exit 1
+        fi
+        if [[ "${PUBLIC_EXECUTABLE_DIR}" != "" ]];
+        then
+            EXEC_OUTDIR="${PUBLIC_EXECUTABLE_DIR}"
+        else
+            warn -p "Error: PUBLIC_EXECUTABLE_DIR variable setting not found in the profile '$PROFILE'"
+            exit 1
+        fi
     fi
 else
     echo "No profile specified. Running in personal mode."

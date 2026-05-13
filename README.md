@@ -175,6 +175,7 @@ Options:
 - `-p, --personal`: write into personal directories under `~/container-apps` and `~/privatemodules`
 - `-t, --tcl`: shortcut for `--module-system tcl`
 - `--profile NAME`: load a named profile from [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles) or `~/container-apps/profiles`
+- `--write-to-profile-dirs`: output to the directories from the profile, rather than the profile defaults
 - `-c, --container-app`: specify the container application explicitly: `singularity` or `apptainer`
 - `-j, --jupyter`: create a Jupyter kernel after the main workflow completes
 - `-l, --list`: list available profiles
@@ -182,7 +183,12 @@ Options:
 - `-h, --help`: show built-in help
 
 If you do not pass `--profile`, the script defaults to personal mode.  If you do
-not pass `--module-system`, the script generates Lmod modulefiles.  If you do not
+not pass `--module-system`, the script generates Lmod modulefiles.
+If you have used the `--profile` option, and do not specify
+`--write-to-profile-dirs` option, the output will be sent to the ./executables/
+./incomplete/ subdirectories by default (Note: the `--dir` option can change
+the default top output directory (see <OUTDIR> in the [output locations](#output-locations) section
+below,) but `--write-to-profile-dirs` overrides this option.)  If you do not
 specify `--container-app` the script searches for `singularity` first, then
 `apptainer`
 
@@ -202,7 +208,9 @@ Profile-backed or shared mode writes to:
 - Wrappers: `PUBLIC_EXECUTABLE_DIR`
 - Existing-module lookup: `MOD_EXISTING_DIR_DEF` or `-m`
 - New modulefiles: `<OUTDIR>/incomplete`
+  - with the `--write-to-profile-dirs` option this will instead be the directory from the profile stored in the `MOD_EXISTING_DIR_DEF` variable
 - New wrappers when not using personal mode: `<OUTDIR>/executables`
+  - with the `--write-to-profile-dirs` option this will instead be the directory from the profile stored in the `PUBLIC_EXECUTABLE_DIR` variable
 - New Jupyter kernels when not using personal mode: `<OUTDIR>/kernels`
 
 The default `OUTDIR` is the current directory.
@@ -223,6 +231,28 @@ Create a personal module from a public Docker image:
 module load use.own
 module load bowtie2/2.5.4
 bowtie2 --help
+```
+
+Create a module using the `biocontainers` profile with the output files in the
+default locations, ./incomplete and ./executables
+
+```bash
+./container-mod pipe --profile biocontainers docker://quay.io/biocontainers/star:2.7.11b--h43eeafb_1
+```
+
+Create a module using the `biocontainers` profile with the output files into an 
+`./outdir` directory tree
+
+```bash
+./container-mod pipe --profile biocontainers --directory "./outdir" docker://quay.io/biocontainers/star:2.7.11b--h43eeafb_1
+find ./outdir/ -type f
+```
+
+Create a module using the `biocontainers` profile with the output files into the
+directories from the profile
+
+```bash
+./container-mod pipe --profile biocontainers --write-to-profile-dirs docker://quay.io/biocontainers/star:2.7.11b--h43eeafb_1
 ```
 
 Generate a Tcl modulefile instead of the default Lua modulefile:
@@ -262,7 +292,6 @@ List available profiles:
 ```bash
 ./container-mod --list
 ```
-
 
 ## Local Image Behavior
 
