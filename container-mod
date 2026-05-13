@@ -31,6 +31,7 @@ umask 022
 VERSION="1.1.0"
 PROGNAME="$(basename "$0")"
 E_OK=0
+CONTAINER_APPS="singularity apptainer"
 CONTAINER_RUNTIME=""
 CONTAINER_MODULE_NAME=""
 MODULE_SYSTEM="lmod"
@@ -59,37 +60,31 @@ detect_container_runtime() {
     # before we ask it about availability or loading.  Without this,
     # Lmod's init-script-defined `module` function is invisible here.
     if ensure_module_function && type module &>/dev/null; then
-        if module_is_available "singularity"; then
-            if module load singularity &>/dev/null && command -v singularity &>/dev/null; then
-                CONTAINER_RUNTIME="singularity"
-                CONTAINER_MODULE_NAME="singularity"
-                return 0
+        for container_app in ${CONTAINER_APPS}
+        do
+            if module_is_available "${container_app}"; then
+                if module load ${container_app} &>/dev/null && command -v ${container_app} &>/dev/null; then
+                    CONTAINER_RUNTIME="${container_app}"
+                    CONTAINER_MODULE_NAME="${container_app}"
+                    return 0
+                fi
             fi
-        fi
-        if module_is_available "apptainer"; then
-            if module load apptainer &>/dev/null && command -v apptainer &>/dev/null; then
-                CONTAINER_RUNTIME="apptainer"
-                CONTAINER_MODULE_NAME="apptainer"
-                return 0
-            fi
-        fi
+        done
     fi
 
     # Fall back to system binaries when no module-provided runtime
     # is available (Monishnd-style site with apptainer in /usr/bin
     # and no Lmod entry, or any host without Lmod at all).
-    if command -v singularity &>/dev/null; then
-        CONTAINER_RUNTIME="singularity"
-        CONTAINER_MODULE_NAME="singularity"
-        return 0
-    fi
-    if command -v apptainer &>/dev/null; then
-        CONTAINER_RUNTIME="apptainer"
-        CONTAINER_MODULE_NAME="apptainer"
-        return 0
-    fi
+    for container_app in ${CONTAINER_APPS}
+    do
+        if command -v "${container_app}" &>/dev/null; then
+            CONTAINER_RUNTIME="${container_app}"
+            CONTAINER_MODULE_NAME="${container_app}"
+            return 0
+        fi
+    done
 
-    warn -p "Error: Failed to find or load a container runtime (Singularity/Apptainer)."
+    warn -p "Error: Failed to find or load a container runtime ($(echo "${CONTAINER_APPS}" | sed 's/ /\//g'))."
     return 1
 }
 
@@ -280,6 +275,7 @@ Options:
   -u, --update            Update the app info file with the new version.
   -p, --personal          Create files in your personal directories (~/privatemodules, etc.).
   --profile NAME          Use a specific configuration profile.
+  -c, --container-app     Specify the container application: singularity or apptainer (default: search for singularity, then apptainer)
   -s, --module-system SYS Choose the module system: lmod or tcl (default: lmod).
   -t, --tcl               Shortcut for --module-system tcl.
   -j, --jupyter           Generate a Jupyter kernel for the container.
@@ -1442,7 +1438,6 @@ then
     list_profiles
     exit 0
 fi
-detect_container_runtime || exit 1
 shift # Move past the subcommand
 
 declare -a ARGV
@@ -1450,6 +1445,7 @@ while (($#));
 do
     case $1 in
         --profile) shift; PROFILE="$1" ;;
+        -c|--container-app) shift; CONTAINER_APPS="$1" ;;
         -d|--dir|--directory) shift; OUTDIR="$1" ;;
         -f|--force) force=1 ;;
         -m|--module-dir|--module-directory) shift; MOD_EXISTING_DIR="$1" ;;
@@ -1476,11 +1472,22 @@ then
     exit 1
 fi
 
+for container_app in ${CONTAINER_APPS}
+do
+    if [[ "${container_app}" != "singularity" && "${container_app}" != "apptainer" ]];
+    then
+        warn -p "Error: Unsupported container application '${container_app}'. Use 'singularity' or 'apptainer'."
+        exit 1
+    fi
+done
+
 if [[ $# -eq 0 ]]; then
     warn -p "Error: At least one container URI or image path is required."
     help_message >&2
     exit 1
 fi
+
+detect_container_runtime || exit 1
 
 # --- Profile Loading ---
 if [[ -n "$PROFILE" ]];

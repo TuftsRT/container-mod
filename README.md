@@ -175,13 +175,16 @@ Options:
 - `-p, --personal`: write into personal directories under `~/container-apps` and `~/privatemodules`
 - `-t, --tcl`: shortcut for `--module-system tcl`
 - `--profile NAME`: load a named profile from [`profiles/`](/Users/yucheng/Documents/GitHub/container-mod/profiles) or `~/container-apps/profiles`
+- `-c, --container-app`: specify the container application explicitly: `singularity` or `apptainer`
 - `-j, --jupyter`: create a Jupyter kernel after the main workflow completes
 - `-l, --list`: list available profiles
 - `-v, --version`: print the script version and exit
 - `-h, --help`: show built-in help
 
-If you do not pass `--profile`, the script defaults to personal mode. If you do
-not pass `--module-system`, the script generates Lmod modulefiles.
+If you do not pass `--profile`, the script defaults to personal mode.  If you do
+not pass `--module-system`, the script generates Lmod modulefiles.  If you do not
+specify `--container-app` the script searches for `singularity` first, then
+`apptainer`
 
 ## Output Locations
 
@@ -229,6 +232,12 @@ Generate a Tcl modulefile instead of the default Lua modulefile:
 module load bowtie2/2.5.4
 ```
 
+Use apptainer (rather than singularity by default):
+
+```bash
+./container-mod pipe -p -c apptainer docker://tuftsttsrt/alphafold3:3.0.1
+```
+
 Generate artifacts from a local image without re-pulling:
 
 ```bash
@@ -253,6 +262,7 @@ List available profiles:
 ```bash
 ./container-mod --list
 ```
+
 
 ## Local Image Behavior
 
