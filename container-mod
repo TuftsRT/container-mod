@@ -996,13 +996,23 @@ generate_new_modulefile() {
     local esc_app; esc_app=$(sedi_escape "$app")
     local esc_bind; esc_bind=$(sedi_escape "${BIND_PATH:-}")
 
+    local bind_env_var="${BIND_ENV_VAR:-}"
+    if [[ -z "$bind_env_var" ]]; then
+        case "${RUNTIME_MODULE:-${CONTAINER_RUNTIME:-}}" in
+            singularity) bind_env_var="SINGULARITY_BIND" ;;
+            apptainer) bind_env_var="APPTAINER_BIND" ;;
+            *) bind_env_var="APPTAINER_BIND" ;;
+        esac
+    fi
+    local esc_bind_env_var; esc_bind_env_var=$(sedi_escape "$bind_env_var")
+
     # Render the bind block conditionally so users without a configured
     # BIND_PATH do not get a hardcoded site-specific path baked into modules.
     local bind_lua_block=""
     local bind_tcl_block=""
     if [[ -n "${BIND_PATH:-}" ]]; then
-        bind_lua_block="prepend_path{\"APPTAINER_BIND\",\"${esc_bind}\",delim=\",\"}"
-        bind_tcl_block="prepend-path --delim=\",\" APPTAINER_BIND \"${esc_bind}\""
+        bind_lua_block="prepend_path{\"${esc_bind_env_var}\",\"${esc_bind}\",delim=\",\"}"
+        bind_tcl_block="prepend-path --delim=\",\" ${esc_bind_env_var} \"${esc_bind}\""
     fi
 
     # Render the runtime-dependency block only when there is a real
