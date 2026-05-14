@@ -859,6 +859,13 @@ print_modulefile() {
         return $?
     fi
 
+    if [[ -n "${BIND_PATH:-}" ]];
+    then
+        echo "   BIND_PATH is set. Generating a new module from template to include bind settings." >&2
+        generate_new_modulefile "$uri"
+        return $?
+    fi
+
     local app; app=$(uri2app "$uri") || return 1
     local latest_modulefile; latest_modulefile=$(find_latest_modulefile "$app")
 
