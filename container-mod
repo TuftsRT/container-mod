@@ -28,7 +28,7 @@ umask 022
 # It assumes that Singularity or Apptainer is installed and available.
 
 # --- Script Configuration ---
-VERSION="1.1.0"
+VERSION="1.1.1"
 PROGNAME="$(basename "$0")"
 E_OK=0
 CONTAINER_APPS="singularity apptainer"
