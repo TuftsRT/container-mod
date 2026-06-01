@@ -1,6 +1,6 @@
 Description: QIIME 2 is a powerful, extensible, and decentralized microbiome analysis package with a focus on data and analysis transparency. QIIME 2 enables researchers to start an analysis with raw DNA sequence data and finish with publication-quality figures and statistical results.
 Home Page: https://qiime2.org/
-Programs: pip,biom,qiime,python,python3
+Programs: pip,pip3,biom,qiime,python,python3
 
 version("2024.2", uri="docker://quay.io/qiime2/amplicon:2024.2")
 version("2023.7", uri="docker://quay.io/qiime2/core:2023.7")
