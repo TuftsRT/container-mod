@@ -754,8 +754,6 @@ cmd_pull() {
         # Create a temporary file to build the updated content
         local temp_file
         temp_file=$(mktemp "${app_file}.XXXXXX") || { warn -p "Failed to create temp file"; return 1; }
-        # Ensure temp file is removed on exit
-        trap 'rm -f "$temp_file"' RETURN
 
         # Rebuild the file:
         # 1. Copy all lines EXCEPT the existing version lines.
