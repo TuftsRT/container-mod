@@ -12,7 +12,7 @@ set -uo pipefail
 # directory to reach it.
 umask 022
 
-# container-mod v1.0.0
+# container-mod v1.1.1
 #
 # Copyright (c) 2024 Tufts University
 # Author: Yucheng Zhang
