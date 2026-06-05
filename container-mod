@@ -28,11 +28,12 @@ umask 022
 # It assumes that Singularity or Apptainer is installed and available.
 
 # --- Script Configuration ---
-VERSION="1.1.1"
+VERSION="1.1.2"
 PROGNAME="$(basename "$0")"
 E_OK=0
 CONTAINER_APPS="singularity apptainer"
 CONTAINER_RUNTIME=""
+CONTAINER_RUNTIME_FLAVOR=""
 CONTAINER_MODULE_NAME=""
 MODULE_SYSTEM="lmod"
 
@@ -65,6 +66,7 @@ detect_container_runtime() {
             if module_is_available "${container_app}"; then
                 if module load ${container_app} &>/dev/null && command -v ${container_app} &>/dev/null; then
                     CONTAINER_RUNTIME="${container_app}"
+                    CONTAINER_RUNTIME_FLAVOR="$(runtime_flavor_for_command "${container_app}")"
                     CONTAINER_MODULE_NAME="${container_app}"
                     return 0
                 fi
@@ -79,6 +81,7 @@ detect_container_runtime() {
     do
         if command -v "${container_app}" &>/dev/null; then
             CONTAINER_RUNTIME="${container_app}"
+            CONTAINER_RUNTIME_FLAVOR="$(runtime_flavor_for_command "${container_app}")"
             CONTAINER_MODULE_NAME="${container_app}"
             return 0
         fi
@@ -124,6 +127,40 @@ cache_set() {
         CACHE_URIS+=("$uri")
         CACHE_APPS+=("$app")
         CACHE_VERSIONS+=("$version")
+    fi
+}
+
+# Detects whether a runtime command is backed by Singularity or Apptainer.
+# This matters on clusters where `singularity` is only a compatibility shim
+# for a system-installed Apptainer, in which case bind variables should use
+# APPTAINER_BIND even though the invoked command name is `singularity`.
+# @param $1 - The runtime command name.
+# @echo The runtime family: "singularity" or "apptainer".
+runtime_flavor_for_command() {
+    local runtime_cmd="$1"
+    [[ -z "$runtime_cmd" ]] && return 1
+
+    local runtime_path=""
+    runtime_path="$(command -v "$runtime_cmd" 2>/dev/null)" || return 1
+
+    local resolved_path="$runtime_path"
+    if command -v realpath &>/dev/null; then
+        resolved_path="$(realpath "$runtime_path" 2>/dev/null || echo "$runtime_path")"
+    fi
+
+    case "$(basename "$resolved_path")" in
+        *apptainer*) echo "apptainer"; return 0 ;;
+        *singularity*) echo "singularity"; return 0 ;;
+    esac
+
+    local version_line=""
+    version_line="$("$runtime_cmd" --version 2>&1 | head -n 1)"
+    if printf '%s\n' "$version_line" | grep -qi 'apptainer'; then
+        echo "apptainer"
+    elif printf '%s\n' "$version_line" | grep -qi 'singularity'; then
+        echo "singularity"
+    else
+        echo "$runtime_cmd"
     fi
 }
 
@@ -996,7 +1033,7 @@ generate_new_modulefile() {
 
     local bind_env_var="${BIND_ENV_VAR:-}"
     if [[ -z "$bind_env_var" ]]; then
-        case "${RUNTIME_MODULE:-${CONTAINER_RUNTIME:-}}" in
+        case "${RUNTIME_MODULE:-${CONTAINER_RUNTIME_FLAVOR:-${CONTAINER_RUNTIME:-}}}" in
             singularity) bind_env_var="SINGULARITY_BIND" ;;
             apptainer) bind_env_var="APPTAINER_BIND" ;;
             *) bind_env_var="APPTAINER_BIND" ;;
