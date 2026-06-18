@@ -1277,8 +1277,17 @@ elif command -v rocm-smi &> /dev/null && rocm-smi -L &> /dev/null; then
     OPTIONS+=("--rocm")
 fi
 
+# Add any extra runtime options in the variable "RUNTIME_OPTIONS"
+if [ "\${RUNTIME_OPTIONS}" != "" ]
+then
+  IFS=' ' read -a ADDR <<< "\${RUNTIME_OPTIONS}"
+  for i in "\${ADDR[@]}"; do
+    OPTIONS+=("\${i}")
+  done
+fi
+
 # Run the container command
-"\$RUNTIME" exec "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
+exec "\$RUNTIME" run "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
 EOF
 
     # Set permissions to 755 (executable for all).
