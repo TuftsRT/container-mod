@@ -1286,8 +1286,13 @@ then
   done
 fi
 
+# By default we "exec" the program in the container, but this can be
+# changed to "run" with:
+# $ export RUNTIME_LAUNCH="run"
+RUNTIME_LAUNCH="\${RUNTIME_LAUNCH:-exec}"
+
 # Run the container command
-exec "\$RUNTIME" run "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
+exec "\$RUNTIME" "\${RUNTIME_LAUNCH}" "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
 EOF
 
     # Set permissions to 755 (executable for all).
