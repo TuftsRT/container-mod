@@ -12,7 +12,7 @@ set -uo pipefail
 # directory to reach it.
 umask 022
 
-# container-mod v1.1.1
+# container-mod v1.2.0
 #
 # Copyright (c) 2024 Tufts University
 # Author: Yucheng Zhang
@@ -28,7 +28,7 @@ umask 022
 # It assumes that Singularity or Apptainer is installed and available.
 
 # --- Script Configuration ---
-VERSION="1.1.2"
+VERSION="1.2.0"
 PROGNAME="$(basename "$0")"
 E_OK=0
 CONTAINER_APPS="singularity apptainer"
@@ -162,6 +162,44 @@ runtime_flavor_for_command() {
     else
         echo "$runtime_cmd"
     fi
+}
+
+# Validates the optional wrapper runtime configuration supplied by a profile
+# or the environment. RUNTIME_LAUNCH controls the container runtime
+# subcommand, while RUNTIME_OPTIONS is intentionally limited to simple,
+# whitespace-separated flag tokens such as "--mpi --cleanenv".
+validate_runtime_wrapper_config() {
+    RUNTIME_LAUNCH="${RUNTIME_LAUNCH:-exec}"
+    case "$RUNTIME_LAUNCH" in
+        exec|run) ;;
+        *)
+            warn -p "Error: RUNTIME_LAUNCH must be 'exec' or 'run' (got '$RUNTIME_LAUNCH')."
+            return 1
+            ;;
+    esac
+
+    [[ -z "${RUNTIME_OPTIONS:-}" ]] && return 0
+
+    if [[ "$RUNTIME_OPTIONS" == *$'\n'* ]]; then
+        warn -p "Error: RUNTIME_OPTIONS must be a single line of simple whitespace-separated flags."
+        return 1
+    fi
+
+    local unsupported_runtime_option_chars="['\"\\\\]"
+    if [[ "$RUNTIME_OPTIONS" =~ $unsupported_runtime_option_chars ]]; then
+        warn -p "Error: RUNTIME_OPTIONS does not support shell quotes or escapes; use simple whitespace-separated flags."
+        return 1
+    fi
+
+    local -a runtime_options=()
+    local runtime_option
+    read -r -a runtime_options <<< "$RUNTIME_OPTIONS"
+    for runtime_option in "${runtime_options[@]}"; do
+        if [[ "$runtime_option" != -* ]]; then
+            warn -p "Error: RUNTIME_OPTIONS only accepts simple whitespace-separated flags; use a single token such as '--bind=/path', not '$runtime_option'."
+            return 1
+        fi
+    done
 }
 
 # Performs any necessary cleanup before the script exits.
@@ -1222,6 +1260,22 @@ generate_executable() {
 
     ensure_dir_access "$(dirname "$executable")" || return 1
 
+    # RUNTIME_OPTIONS has already been validated after profile loading. Split
+    # it with read rather than shell evaluation, then render each token with
+    # printf %q so the generated wrapper keeps the intended argument boundary.
+    local -a runtime_options=()
+    local runtime_options_declaration="RUNTIME_OPTIONS=()"
+    local runtime_option escaped_runtime_option
+    if [[ -n "${RUNTIME_OPTIONS:-}" ]]; then
+        read -r -a runtime_options <<< "$RUNTIME_OPTIONS"
+        runtime_options_declaration="RUNTIME_OPTIONS=("
+        for runtime_option in "${runtime_options[@]}"; do
+            printf -v escaped_runtime_option '%q' "$runtime_option"
+            runtime_options_declaration+=" $escaped_runtime_option"
+        done
+        runtime_options_declaration+=" )"
+    fi
+
     # Build the runtime-bootstrap block.  If a Lmod entry for the
     # runtime exists on this host (we resolved this in RUNTIME_MODULE
     # at startup), the wrapper falls back to `module load <name>`
@@ -1260,6 +1314,8 @@ PROGRAM="$command"
 IMAGE_DIR="$image_dir"
 IMAGE="$image_name"
 RUNTIME="$CONTAINER_RUNTIME"
+RUNTIME_LAUNCH="$RUNTIME_LAUNCH"
+$runtime_options_declaration
 
 $runtime_bootstrap
 
@@ -1278,7 +1334,7 @@ elif command -v rocm-smi &> /dev/null && rocm-smi -L &> /dev/null; then
 fi
 
 # Run the container command
-"\$RUNTIME" exec "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
+exec "\$RUNTIME" "\$RUNTIME_LAUNCH" "\${RUNTIME_OPTIONS[@]}" "\${OPTIONS[@]}" "\$IMAGE_DIR/\$IMAGE" "\$PROGRAM" "\$@"
 EOF
 
     # Set permissions to 755 (executable for all).
@@ -1590,6 +1646,11 @@ fi
 
 # Set default if not defined in profile
 MOD_EXISTING_DIR="${MOD_EXISTING_DIR:-${MOD_EXISTING_DIR_DEF:-}}"
+
+# Profiles may optionally choose the runtime subcommand and extra runtime
+# flags for generated wrappers. Validate them after sourcing the profile so
+# invalid values fail before any artifacts are written.
+validate_runtime_wrapper_config || exit 1
 
 # Resolve the Lmod / Environment Modules name to record as the
 # runtime dependency in generated modulefiles.

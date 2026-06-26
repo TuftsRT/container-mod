@@ -113,6 +113,10 @@ Profile variables map to runtime behavior like this:
   `RUNTIME_MODULE="apptainer/1.3.0"`), or set it to `""` to force the
   dependency line off on systems where the runtime is just a system
   binary with no corresponding module entry.
+- `RUNTIME_LAUNCH`: optional runtime subcommand for generated wrappers.
+  It must be `exec` (the default) or `run`.
+- `RUNTIME_OPTIONS`: optional extra runtime flags for generated wrappers.
+  Only simple whitespace-separated flags are supported.
 
 When a profile is active, the script still writes newly generated modulefiles to
 `<OUTDIR>/incomplete` unless you are in personal mode. This lets you stage and
@@ -137,6 +141,28 @@ Then use it with:
 ```bash
 ./container-mod pipe --profile <name> docker://quay.io/biocontainers/seqkit:2.10.0--h9ee0642_0
 ```
+
+### Runtime launch settings
+
+Profiles may customize how generated wrappers invoke Singularity or
+Apptainer:
+
+```bash
+# Default: execute the named program inside the image.
+RUNTIME_LAUNCH="exec"
+
+# Optional extra runtime flags.
+RUNTIME_OPTIONS="--mpi --cleanenv"
+```
+
+`RUNTIME_LAUNCH="run"` is also accepted, but it invokes the image's
+runscript rather than the standard per-program `exec` behavior. Use it only
+when that semantic change is intentional.
+
+`RUNTIME_OPTIONS` is not a shell command line. It accepts simple
+whitespace-separated flags only; shell quotes, escaped spaces, and separate
+option values are unsupported. Use one token per flag, for example
+`--bind=/cluster/example`, rather than `--bind /cluster/example`.
 
 ### `--profile` vs `--personal`
 
@@ -341,7 +367,9 @@ For each listed executable, the script:
 1. Checks whether the command exists inside the container (uses
    `sh -c "command -v ..."` so distroless images without `which` still work)
 2. Creates a wrapper under `app/version/bin/`
-3. Executes the command through `singularity exec` or `apptainer exec`
+3. Replaces the wrapper shell with `singularity exec` or `apptainer exec`
+   by default; a profile can deliberately select the runtime's `run`
+   subcommand instead
 4. Adds `--nv` when an NVIDIA GPU is detected, or `--rocm` when an AMD
    GPU is detected (these flags are mutually exclusive; `--nv` wins on
    mixed systems)
