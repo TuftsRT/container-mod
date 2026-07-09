@@ -64,13 +64,36 @@ source_suffix = {
 html_theme = "furo"
 html_title = f"container-mod {release}"
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_logo = "_static/logo.png"
+html_favicon = "_static/logo.png"
+
+# Brand colors — a calm indigo that reads well in both light and dark
+_brand_primary_light = "#3b5bdb"
+_brand_primary_dark = "#748ffc"
 
 html_theme_options = {
-    "sidebar_hide_name": False,
+    "sidebar_hide_name": True,
     "navigation_with_keys": True,
     "source_repository": "https://github.com/TuftsRT/container-mod/",
     "source_branch": "main",
     "source_directory": "docs/",
+    "top_of_page_button": "edit",
+    "light_css_variables": {
+        "color-brand-primary": _brand_primary_light,
+        "color-brand-content": _brand_primary_light,
+        "color-brand-visited": _brand_primary_light,
+        "color-admonition-title--note": _brand_primary_light,
+        "font-stack": (
+            "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "
+            "'Helvetica Neue', Arial, sans-serif"
+        ),
+    },
+    "dark_css_variables": {
+        "color-brand-primary": _brand_primary_dark,
+        "color-brand-content": _brand_primary_dark,
+        "color-brand-visited": _brand_primary_dark,
+    },
     "footer_icons": [
         {
             "name": "GitHub",
@@ -91,6 +114,13 @@ html_theme_options = {
         },
     ],
 }
+
+# Default highlight language for bare ``` code fences without an explicit tag.
+highlight_language = "bash"
+
+# Prettier default pygments themes
+pygments_style = "friendly"
+pygments_dark_style = "monokai"
 
 # Nicer copy-button behavior on shell code blocks.
 copybutton_prompt_text = r"^\$ |^# |^\.\.\.: |^In \[\d*\]: | {2,5}\.\.\.:? |^\d+\.\.\d+ "
