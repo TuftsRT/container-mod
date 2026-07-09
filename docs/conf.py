@@ -34,7 +34,12 @@ extensions = [
     "myst_parser",
     "sphinx_copybutton",
     "sphinx_design",
+    "sphinxcontrib.mermaid",
 ]
+
+# Mermaid: use a moderate theme that works in both light and dark
+mermaid_init_js = "mermaid.initialize({startOnLoad:true, theme:'neutral'});"
+mermaid_output_format = "raw"
 
 myst_enable_extensions = [
     "colon_fence",
@@ -79,6 +84,12 @@ html_theme_options = {
     "source_branch": "main",
     "source_directory": "docs/",
     "top_of_page_button": "edit",
+    "announcement": (
+        "\U0001F389 <strong>container-mod {} released</strong> — "
+        "MPI support, robust runtime detection, and 110+ new app "
+        "skeletons. See the "
+        "<a href='changelog.html'>changelog</a>."
+    ).format(release),
     "light_css_variables": {
         "color-brand-primary": _brand_primary_light,
         "color-brand-content": _brand_primary_light,
