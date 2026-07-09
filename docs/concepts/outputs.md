@@ -74,7 +74,7 @@ the wrapper template propagate to old apps on redeployment.
 A generated Lmod modulefile roughly looks like this (some boilerplate
 elided):
 
-```lua
+```text
 help([==[
 Description
 ===========

@@ -119,3 +119,90 @@ button.copybtn:hover {
 .sidebar-brand {
     color: var(--color-brand-primary);
 }
+
+/* Announcement banner: slightly stronger accent so it reads as
+   a call-to-action rather than a warning. */
+.announcement {
+    background: linear-gradient(90deg, #3b5bdb, #5c7cfa);
+    color: #ffffff;
+    font-weight: 500;
+}
+.announcement a {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+/* Sidebar spacing */
+.sidebar-drawer .sidebar-container {
+    padding: 1em 0;
+}
+.sidebar-tree .caption {
+    font-size: 0.8em;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-foreground-muted);
+    margin-top: 1.2em;
+}
+
+/* Card icons - larger, colored */
+.sd-card-title .octicon {
+    color: var(--color-brand-primary);
+    margin-right: 0.4em;
+    vertical-align: -0.15em;
+}
+
+/* Slightly larger card titles */
+.sd-card-title {
+    font-size: 1.1em;
+}
+
+/* Grids get more breathing room */
+.sd-container-fluid.sd-sphinx-override.sd-mb-4 {
+    margin-bottom: 2em;
+}
+
+/* Nicer caption above code blocks */
+.code-block-caption,
+.literal-block-wrapper .code-block-caption {
+    background: var(--color-background-secondary);
+    padding: 0.4em 0.8em;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid var(--color-background-border);
+    border-bottom: none;
+    font-size: 0.9em;
+    color: var(--color-foreground-muted);
+    font-weight: 500;
+}
+.code-block-caption + div.highlight {
+    border-radius: 0 0 6px 6px;
+    margin-top: 0;
+}
+
+/* Mermaid diagrams: center + neutral background */
+.mermaid,
+div.mermaid {
+    text-align: center;
+    margin: 1.4em 0;
+    background: var(--color-background-secondary);
+    padding: 1em;
+    border-radius: 8px;
+    border: 1px solid var(--color-background-border);
+}
+
+/* Blockquotes: subtle left border in brand color */
+article blockquote {
+    border-left: 3px solid var(--color-brand-primary);
+    background: var(--color-background-secondary);
+    padding: 0.6em 1em;
+    border-radius: 0 6px 6px 0;
+    color: var(--color-foreground-secondary);
+}
+
+/* Tab-set: cleaner, matching brand accent */
+.sd-tab-set > label.sd-tab-label {
+    font-weight: 500;
+}
+.sd-tab-set > input:checked + label {
+    color: var(--color-brand-primary);
+    border-bottom-color: var(--color-brand-primary);
+}

@@ -13,7 +13,7 @@ without forking the script.
 Both live next to the `container-mod` script and are picked up
 automatically. The bundled Lua template is roughly:
 
-```lua
+```text
 help([==[
 
 Description
@@ -120,7 +120,7 @@ To append site-specific commands to every generated modulefile, edit
 `templates/module_template.lua` and add whatever you need after the
 placeholders:
 
-```lua
+```text
 -- End of default template …
 prepend_path("PATH", modroot.."/bin", ":")
 ${BIND_LUA}

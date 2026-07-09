@@ -76,7 +76,7 @@ In practice, admins want to:
 `container-mod` supports this by keeping new modulefiles under
 `<OUTDIR>/incomplete/` and looking at the existing tree
 (`MOD_EXISTING_DIR_DEF`, overridable with `-m`) only to find *older*
-versions worth repurposing. See [Module Generation Behavior](../usage/subcommands.md#module).
+versions worth repurposing. See [module](../usage/subcommands/module.md).
 
 ## Reusing an existing modulefile
 

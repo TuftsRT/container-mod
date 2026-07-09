@@ -59,7 +59,7 @@ The answers are written into the appropriate `repos/<app>` file at mode
 `644`.
 
 `pull` alone — without `-u` — never triggers this prompt because it never
-consumes metadata. See [Subcommands / pull](../usage/subcommands.md#pull).
+consumes metadata. See [pull](../usage/subcommands/pull.md).
 
 ## Recording versions with `--update`
 
