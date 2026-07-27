@@ -663,7 +663,7 @@ get_appinfo_file() {
     local path
     local search_paths=()
 
-    if [[ $personal -eq 1 ]]; then
+    if [[ "$personal" -eq 1 ]]; then
         search_paths+=("$HOME/container-apps/repos")
     fi
     search_paths+=("$AppInfo_DIR")
@@ -674,6 +674,16 @@ get_appinfo_file() {
             return 0
         fi
     done
+
+    # If we are in profile mode, and the the repos file was created in personal
+    # mode, copy the personal mode repos file to "$AppInfo_DIR" and use that.
+    if [[ "$personal" -ne 1 ]]; then
+        if [[ -f "$HOME/container-apps/repos/$app" ]]; then
+            cp "$HOME/container-apps/repos/$app" "${AppInfo_DIR}/"
+            echo "${AppInfo_DIR}/$app"
+            return 0
+        fi
+    fi
 
     return 1
 }
