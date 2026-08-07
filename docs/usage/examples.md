@@ -13,7 +13,7 @@ alias container-mod=~/tools/container-mod/container-mod
 container-mod pipe -p docker://staphb/bowtie2:2.5.4
 
 # Load and use
-module load use.own
+module use ~/privatemodules
 module load bowtie2/2.5.4
 bowtie2 --help
 ```
@@ -78,7 +78,7 @@ version("0.11.9", uri="docker://quay.io/biocontainers/fastqc:0.11.9--0")
 # -> Enter the application name: myapp
 # -> Enter the application version: 1.0
 
-module load use.own
+module use ~/privatemodules
 module load myapp/1.0
 ```
 

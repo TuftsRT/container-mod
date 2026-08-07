@@ -62,13 +62,13 @@ See [Profile variables / RUNTIME_OPTIONS](configuration/variables.md#runtime_opt
 ## How do I make my personal modules visible to Lmod?
 
 ```bash
-module load use.own
+module use ~/privatemodules
 module load <app>/<version>
 ```
 
-`use.own` is a stock Lmod module that adds `~/privatemodules` to the
-module search path. Add `module load use.own` to your `~/.bashrc` to
-have it always available.
+`module use ~/privatemodules` adds your personal module directory to the
+module search path. Add that command to your `~/.bashrc` to have it always
+available.
 
 ## How do I upgrade an existing modulefile without losing my hand-edits?
 

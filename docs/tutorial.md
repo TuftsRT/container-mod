@@ -67,7 +67,7 @@ under `~/container-apps/repos/bowtie2`.
 ## 4. Load and use
 
 ```bash
-module load use.own
+module use ~/privatemodules
 module load bowtie2/2.5.4
 
 bowtie2 --version

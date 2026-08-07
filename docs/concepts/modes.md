@@ -25,7 +25,7 @@ Intended for individual users building modules for their own account.
 To make personal modules discoverable to Lmod, run:
 
 ```bash
-module load use.own
+module use ~/privatemodules
 module load bowtie2/2.5.4
 ```
 
@@ -93,7 +93,7 @@ Tcl mode always renders a fresh modulefile from the template.
 
 - Testing a new container on your own account → **personal mode**.
 - Building a module for one HPC user → personal mode plus a hint to the
-  user to `module load use.own`.
+  user to `module use ~/privatemodules`.
 - Building a module the whole cluster should see → **profile-backed
   mode**, with the profile declaring the shared output locations.
 

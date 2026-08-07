@@ -9,7 +9,7 @@ under your home directory.
 
 ```bash
 ./container-mod pipe -p docker://staphb/bowtie2:2.5.4
-module load use.own
+module use ~/privatemodules
 module load bowtie2/2.5.4
 bowtie2 --help
 ```
