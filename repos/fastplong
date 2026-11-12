@@ -1,0 +1,5 @@
+Description:  Ultra-fast preprocessing and quality control for long-read sequencing data.
+Home Page: https://github.com/OpenGene/fastplong
+Programs: fastplong
+
+version("0.7.1", uri="docker://quay.io/biocontainers/fastplong:0.7.1")
