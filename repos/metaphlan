@@ -2,6 +2,7 @@ Description: Metaphlan is computational tool for profiling the composition of mi
 Home Page: https://github.com/biobakery/MetaPhlAn
 Programs: metaphlan,add_metadata_tree.py,cleanup-blastdb-volumes.py,create_toy_database.py,extract_markers.py,fix_relab_mpa4.py,merge_metaphlan_tables.py,merge_vsc_tables.py,metaphlan2krona.py,plot_tree_graphlan.py,read_fastx.py,run_treeshrink.py,sample2markers.py,sgb_to_gtdb_profile.py,strain_transmission.py,sumlabels.py,sumtrees.py,treeshrink.py,ecommon.sh,get_species_taxids.sh,gettext.sh,h5fuse.sh,installBiocDataPackage.sh,nhance.sh,phylophlan,phylophlan_assign_sgbs,phylophlan_draw_metagenomic,phylophlan_get_reference,phylophlan_setup_database,phylophlan_strain_finder,phylophlan_write_config_file,phylophlan_write_default_configs.sh,strainphlan
 
+version("4.2.4", uri="docker://quay.io/biocontainers/metaphlan:4.2.4--pyhdfd78af_0")
 version("4.0.2", uri="docker://biobakery/metaphlan:4.0.2")
 version("3.0.14", uri="docker://quay.io/biocontainers/metaphlan:3.0.14--pyhb7b1952_0")
 version("3.0.9", uri="https://depot.galaxyproject.org/singularity/metaphlan%3A3.0.9--pyhb7b1952_0")
