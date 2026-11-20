@@ -1,0 +1,5 @@
+Description: bwa-mem2 is the next version of bwa-mem.
+Home Page: https://github.com/bwa-mem2/bwa-mem2
+Programs: bwa-mem2
+
+version("2.3", uri="docker://quay.io/biocontainers/bwa-mem2:2.3--he70b90d_0")
